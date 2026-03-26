@@ -204,6 +204,12 @@ Run the test suite:
 npm test
 ```
 
+Build the app quickly without typecheck or packaging:
+
+```bash
+npm run build:fast
+```
+
 Build the app:
 
 ```bash
@@ -287,6 +293,7 @@ Notes:
 
 ```text
 npm run dev         # Start Electron + Vite in development
+npm run build:fast  # Bundle only for quick local iteration
 npm run build       # Typecheck, bundle, and package for macOS
 npm run build:dir   # Typecheck, bundle, and create unpacked output
 npm run preview     # Preview built app

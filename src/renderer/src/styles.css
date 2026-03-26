@@ -874,8 +874,9 @@ button {
 
 .signal-dial-core strong {
   font-family: 'Cochin', 'Hoefler Text', 'Iowan Old Style', serif;
-  font-size: clamp(2.1rem, 9vw, 3rem);
-  line-height: 0.94;
+  max-width: 100%;
+  font-size: clamp(1.85rem, 7.6vw, 2.6rem);
+  line-height: 0.96;
 }
 
 .signal-dial-core p {
