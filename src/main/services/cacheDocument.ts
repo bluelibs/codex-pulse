@@ -23,6 +23,11 @@ const modelTotalsSchema = z.object({
   isFallback: z.boolean(),
 }) satisfies z.ZodType<ModelTotals>
 
+const modelBreakdownSchema = modelTotalsSchema.extend({
+  name: z.string(),
+  tokenShare: z.number(),
+})
+
 const legacyCacheSchema = z.object({
   version: z.literal(1),
   coarseSentinel: z.string(),
@@ -35,11 +40,12 @@ const cachedDaySchema = z.object({
   label: z.string(),
   totals: tokenTotalsSchema,
   models: z.record(z.string(), modelTotalsSchema),
+  heavyLiftingModels: z.array(modelBreakdownSchema),
   relevantFileCount: z.number().int().nonnegative(),
 })
 
 const cacheSchema = z.object({
-  version: z.literal(2),
+  version: z.literal(3),
   timezone: z.string(),
   weekStartKey: z.string(),
   retentionStartKey: z.string().optional(),

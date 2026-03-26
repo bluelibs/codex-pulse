@@ -49,6 +49,7 @@ export function assembleDashboardSnapshot({
         costUSD: entry.costUSD,
       }),
       models: toModelBreakdown(entry.models, entry.totalTokens),
+      heavyLiftingModels: toModelBreakdown(entry.models, entry.totalTokens),
     })
   }
 

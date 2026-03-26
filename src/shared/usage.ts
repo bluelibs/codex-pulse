@@ -32,6 +32,7 @@ export type DateGroup = {
   label: string
   period: PeriodTotals
   models: ModelBreakdown[]
+  heavyLiftingModels: ModelBreakdown[]
 }
 
 export type DashboardSnapshot = {

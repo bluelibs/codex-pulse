@@ -84,6 +84,7 @@ export function toModelBreakdown(models: Record<string, ModelTotals>, totalToken
   const denominator = totalTokens || 1
 
   return Object.entries(models)
+    .filter(([, totals]) => totals.totalTokens > 0)
     .map(([name, totals]) => ({
       name,
       ...totals,

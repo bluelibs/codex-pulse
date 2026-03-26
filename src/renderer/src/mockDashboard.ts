@@ -1,5 +1,44 @@
 import type { DashboardResponse } from '@shared/usage'
 
+function splitHeavyLiftingModels(totalTokens: number) {
+  const xhighTokens = Math.round(totalTokens * 0.52)
+  const highTokens = Math.round(totalTokens * 0.28)
+  const mediumTokens = totalTokens - xhighTokens - highTokens
+
+  return [
+    {
+      name: 'gpt-5.4-xhigh',
+      inputTokens: Math.max(xhighTokens - 8, 0),
+      cachedInputTokens: Math.max(xhighTokens - 16, 0),
+      outputTokens: 5,
+      reasoningOutputTokens: 2,
+      totalTokens: xhighTokens,
+      isFallback: false,
+      tokenShare: xhighTokens / totalTokens,
+    },
+    {
+      name: 'gpt-5.4-high',
+      inputTokens: Math.max(highTokens - 7, 0),
+      cachedInputTokens: Math.max(highTokens - 14, 0),
+      outputTokens: 2,
+      reasoningOutputTokens: 1,
+      totalTokens: highTokens,
+      isFallback: false,
+      tokenShare: highTokens / totalTokens,
+    },
+    {
+      name: 'gpt-5.4-medium',
+      inputTokens: Math.max(mediumTokens - 5, 0),
+      cachedInputTokens: Math.max(mediumTokens - 10, 0),
+      outputTokens: 1,
+      reasoningOutputTokens: 1,
+      totalTokens: mediumTokens,
+      isFallback: false,
+      tokenShare: mediumTokens / totalTokens,
+    },
+  ]
+}
+
 function makeDay(date: string, totalTokens: number, costUSD: number) {
   return {
     id: date,
@@ -27,6 +66,7 @@ function makeDay(date: string, totalTokens: number, costUSD: number) {
         tokenShare: 1,
       },
     ],
+    heavyLiftingModels: splitHeavyLiftingModels(totalTokens),
   }
 }
 

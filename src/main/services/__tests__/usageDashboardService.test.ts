@@ -183,6 +183,9 @@ describe('UsageDashboardService', () => {
     expect(response.snapshot?.today.totalTokens).toBe(1200)
     expect(response.snapshot?.week.totalTokens).toBe(6400)
     expect(response.snapshot?.relevantFileCount).toBe(2)
+    expect(response.snapshot?.dateGroups.at(-1)?.heavyLiftingModels).toEqual(
+      response.snapshot?.dateGroups.at(-1)?.models,
+    )
     expect(runner).toHaveBeenCalledTimes(1)
 
     const cachedResponse = await service.loadDashboard()
@@ -275,7 +278,7 @@ describe('UsageDashboardService', () => {
     await writeFile(
       cachePath,
       JSON.stringify({
-        version: 2,
+        version: 3,
         timezone: 'UTC',
         weekStartKey: '2026-03-23',
         lastTodayRefreshAt: '2026-03-26T12:00:00.000Z',
@@ -385,6 +388,18 @@ describe('UsageDashboardService', () => {
                 isFallback: false,
               },
             },
+            heavyLiftingModels: [
+              {
+                name: 'gpt-5.4',
+                inputTokens: 1188,
+                cachedInputTokens: 1176,
+                outputTokens: 8,
+                reasoningOutputTokens: 4,
+                totalTokens: 1200,
+                isFallback: false,
+                tokenShare: 1,
+              },
+            ],
             relevantFileCount: 1,
           },
         },
@@ -416,5 +431,96 @@ describe('UsageDashboardService', () => {
         }),
       )
     })
+  })
+
+  it('splits heavy lifting rows by reasoning effort without changing the base model totals', async () => {
+    const root = await makeTempRoot()
+    const codexHome = path.join(root, '.codex')
+    const sessionsFile = path.join(codexHome, 'sessions', '2026', '03', '26', 'active.jsonl')
+    const runner = vi.fn<(request: ReportRequest) => Promise<CcusageDailyReport>>()
+
+    runner.mockImplementation(async (request) =>
+      request.since === '2026-03-26'
+        ? makeReport('2026-03-26', 1200, 0.34)
+        : makeHistoryReport('2026-03-26', 1200, 1200, 0.34),
+    )
+
+    await mkdir(path.dirname(sessionsFile), { recursive: true })
+    await writeFile(
+      sessionsFile,
+      [
+        JSON.stringify({
+          timestamp: '2026-03-26T08:00:00.000Z',
+          type: 'turn_context',
+          payload: {
+            model: 'gpt-5.4',
+            effort: 'high',
+          },
+        }),
+        JSON.stringify({
+          timestamp: '2026-03-26T08:00:01.000Z',
+          type: 'event_msg',
+          payload: {
+            type: 'token_count',
+            info: {
+              last_token_usage: {
+                total_tokens: 300,
+              },
+            },
+          },
+        }),
+        JSON.stringify({
+          timestamp: '2026-03-26T09:00:00.000Z',
+          type: 'turn_context',
+          payload: {
+            model: 'gpt-5.4',
+            effort: 'xhigh',
+          },
+        }),
+        JSON.stringify({
+          timestamp: '2026-03-26T09:00:01.000Z',
+          type: 'event_msg',
+          payload: {
+            type: 'token_count',
+            info: {
+              last_token_usage: {
+                total_tokens: 900,
+              },
+            },
+          },
+        }),
+      ].join('\n'),
+      'utf8',
+    )
+
+    process.env.CODEX_HOME = codexHome
+
+    const service = new UsageDashboardService({
+      cachePath: path.join(root, 'cache', 'usage.json'),
+      mirrorRoot: path.join(root, 'mirror'),
+      runner,
+      timezone: 'UTC',
+      now: () => new Date('2026-03-26T12:00:00.000Z'),
+    })
+
+    const response = await service.loadDashboard()
+    const todayGroup = response.snapshot?.dateGroups.find((group) => group.id === '2026-03-26')
+
+    expect(todayGroup?.models).toEqual([
+      expect.objectContaining({
+        name: 'gpt-5.4',
+        totalTokens: 1200,
+      }),
+    ])
+    expect(todayGroup?.heavyLiftingModels).toEqual([
+      expect.objectContaining({
+        name: 'gpt-5.4-xhigh',
+        totalTokens: 900,
+      }),
+      expect.objectContaining({
+        name: 'gpt-5.4-high',
+        totalTokens: 300,
+      }),
+    ])
   })
 })

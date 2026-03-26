@@ -107,6 +107,61 @@ describe('App', () => {
     expect(screen.getByText('Month rhythm')).toBeInTheDocument()
   })
 
+  it('uses the heavy lifting split only in the model panel', async () => {
+    window.codexPulse.loadDashboard = vi.fn().mockResolvedValue({
+      snapshot: {
+        ...mockDashboardResponse.snapshot,
+        dateGroups: [
+          {
+            ...mockDashboardResponse.snapshot!.dateGroups.at(-1)!,
+            models: [
+              {
+                name: 'gpt-5.4',
+                inputTokens: 900_000,
+                cachedInputTokens: 720_000,
+                outputTokens: 11_000,
+                reasoningOutputTokens: 2_000,
+                totalTokens: 913_000,
+                isFallback: false,
+                tokenShare: 1,
+              },
+            ],
+            heavyLiftingModels: [
+              {
+                name: 'gpt-5.4-xhigh',
+                inputTokens: 540_000,
+                cachedInputTokens: 432_000,
+                outputTokens: 6_000,
+                reasoningOutputTokens: 1_000,
+                totalTokens: 547_000,
+                isFallback: false,
+                tokenShare: 547_000 / 913_000,
+              },
+              {
+                name: 'gpt-5.4-high',
+                inputTokens: 360_000,
+                cachedInputTokens: 288_000,
+                outputTokens: 5_000,
+                reasoningOutputTokens: 1_000,
+                totalTokens: 366_000,
+                isFallback: false,
+                tokenShare: 366_000 / 913_000,
+              },
+            ],
+          },
+        ],
+      },
+      isRefreshing: false,
+      stale: false,
+    })
+
+    render(<App />)
+
+    expect(await screen.findByText('gpt-5.4-xhigh')).toBeInTheDocument()
+    expect(screen.getByText('gpt-5.4-high')).toBeInTheDocument()
+    expect(screen.getAllByText('gpt-5.4').length).toBeGreaterThan(0)
+  })
+
   it('uses mock data in a plain browser when the preload bridge is unavailable', async () => {
     Object.defineProperty(window, 'codexPulse', {
       configurable: true,

@@ -144,11 +144,14 @@ function sumTokenTotals(periods: PeriodTotals[]) {
   return totals;
 }
 
-function sumModels(groups: DashboardSnapshot["dateGroups"]) {
+function sumModels(
+  groups: DashboardSnapshot["dateGroups"],
+  source: "models" | "heavyLiftingModels" = "models",
+) {
   const merged = new Map<string, ModelTotals>();
 
   for (const group of groups) {
-    for (const model of group.models) {
+    for (const model of group[source]) {
       const current = merged.get(model.name) ?? {
         inputTokens: 0,
         cachedInputTokens: 0,
@@ -197,8 +200,16 @@ function buildSelectedWindow(
 
   const totals = sumTokenTotals(selectedGroups.map((group) => group.period));
   const models = sumModels(selectedGroups);
+  const heavyLiftingModels = sumModels(selectedGroups, "heavyLiftingModels");
   const denominator = totals.totalTokens || 1;
   const selectedModels: ModelBreakdown[] = [...models.entries()]
+    .map(([name, model]) => ({
+      name,
+      ...model,
+      tokenShare: model.totalTokens / denominator,
+    }))
+    .sort((left, right) => right.totalTokens - left.totalTokens);
+  const selectedHeavyLiftingModels: ModelBreakdown[] = [...heavyLiftingModels.entries()]
     .map(([name, model]) => ({
       name,
       ...model,
@@ -239,6 +250,7 @@ function buildSelectedWindow(
     selectedPeriod,
     selectedGroups,
     selectedModels,
+    selectedHeavyLiftingModels,
     trend,
     strongestDay,
     cacheRatio:
@@ -401,12 +413,6 @@ export function App() {
   }
 
   if (!deferredSnapshot) {
-    const loadingLabel = clearCachePending
-      ? "Rebuilding usage cache"
-      : response.isRefreshing
-        ? "Syncing usage snapshot"
-        : "Waiting for dashboard data";
-
     return (
       <main className="app-shell app-shell-loading">
         <section className="loading-stage" aria-busy="true" aria-live="polite">
@@ -416,7 +422,9 @@ export function App() {
 
           <div className="hero-copy-block">
             <p className="eyebrow">Codex Pulse</p>
-            <span className="hero-kicker">{loadingLabel}</span>
+            {clearCachePending ? (
+              <span className="hero-kicker">Rebuilding usage cache</span>
+            ) : null}
             <h1>Pulling your usage telemetry into focus.</h1>
             <p className="hero-copy">
               {response.error ??
@@ -461,13 +469,15 @@ export function App() {
                   : "The snapshot is taking a beat to arrive, but the shell is already awake."}
             </p>
 
-            <button
-              className="refresh-button refresh-button-soft"
-              onClick={handleRefresh}
-              type="button"
-            >
-              {manualRefreshPending ? "Refreshing..." : "Try again"}
-            </button>
+            {response.error ? (
+              <button
+                className="refresh-button refresh-button-soft"
+                onClick={handleRefresh}
+                type="button"
+              >
+                {manualRefreshPending ? "Refreshing..." : "Try again"}
+              </button>
+            ) : null}
           </div>
         </section>
       </main>
@@ -592,7 +602,7 @@ export function App() {
       </section>
 
       <div className="model-panel-wrap reveal reveal-delay-5">
-        <ModelPanel models={selectedView.selectedModels} />
+        <ModelPanel models={selectedView.selectedHeavyLiftingModels} />
       </div>
 
       <div className="footer-actions reveal reveal-delay-5">

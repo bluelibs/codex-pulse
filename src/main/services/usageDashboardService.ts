@@ -18,6 +18,7 @@ import {
   resolveCodexPaths,
 } from './fingerprint'
 import { rebuildMirror } from './mirrorBuilder'
+import { buildHeavyLiftingModelBreakdown, collectHeavyLiftingTokenWeights } from './heavyLiftingModels'
 import type { CcusageDailyReport, ReportRunner } from './runCcusage'
 import { emptyModelTotals, emptyTokenTotals, toModelBreakdown, toPeriodTotals } from './tokenTotals'
 
@@ -89,6 +90,7 @@ function normalizeDayDateKey(entryDate: string, fallbackDateKey: string, timezon
 function dayRecordFromReport(
   dateKey: string,
   entry: CcusageDailyReport['daily'][number],
+  heavyLiftingModels: CachedDayDocument['heavyLiftingModels'],
   relevantFileCount: number,
   timezone: string,
 ): CachedDayDocument {
@@ -106,6 +108,7 @@ function dayRecordFromReport(
     models: Object.fromEntries(
       Object.entries(entry.models).map(([name, totals]) => [name, cloneModelTotals(totals)]),
     ),
+    heavyLiftingModels,
     relevantFileCount,
   }
 }
@@ -180,6 +183,7 @@ function buildSnapshotFromDays({
       label: day.label,
       period: toPeriodTotals(day.label, day.dateKey, day.dateKey, cloneTokenTotals(day.totals)),
       models: toModelBreakdown(day.models, day.totals.totalTokens),
+      heavyLiftingModels: day.heavyLiftingModels,
     })),
     models: toModelBreakdown(mergedModels, weekTotals.totalTokens),
     relevantFileCount: sortedDays.reduce((total, day) => total + day.relevantFileCount, 0),
@@ -262,12 +266,13 @@ function migrateLegacyCache(
           },
         ]),
       ),
+      heavyLiftingModels: group.heavyLiftingModels ?? group.models,
       relevantFileCount: 0,
     }
   }
 
   const migrated: DashboardCacheDocument = {
-    version: 2,
+    version: 3,
     timezone,
     weekStartKey,
     retentionStartKey,
@@ -523,6 +528,7 @@ export class UsageDashboardService {
         until: todayKey,
         timezone: this.timezone,
       })
+      const heavyLiftingWeights = await collectHeavyLiftingTokenWeights(fullFiles, this.timezone)
 
       const fileCountsByDay = new Map<string, number>()
       for (const file of fullFiles) {
@@ -540,13 +546,23 @@ export class UsageDashboardService {
 
           return [
             dateKey,
-            dayRecordFromReport(dateKey, entry, fileCountsByDay.get(dateKey) ?? 0, this.timezone),
+            dayRecordFromReport(
+              dateKey,
+              entry,
+              buildHeavyLiftingModelBreakdown(
+                entry.models,
+                entry.totalTokens,
+                heavyLiftingWeights[dateKey],
+              ),
+              fileCountsByDay.get(dateKey) ?? 0,
+              this.timezone,
+            ),
           ]
         }),
       )
 
       const nextCache: DashboardCacheDocument = {
-        version: 2,
+        version: 3,
         timezone: this.timezone,
         weekStartKey,
         retentionStartKey,
@@ -609,6 +625,7 @@ export class UsageDashboardService {
       until: todayKey,
       timezone: this.timezone,
     })
+    const heavyLiftingWeights = await collectHeavyLiftingTokenWeights(todayFiles, this.timezone)
 
     const todayEntry = todayReport.daily[0]
     const nextDay =
@@ -618,9 +635,20 @@ export class UsageDashboardService {
             label: formatDayLabel(todayKey, this.timezone),
             totals: emptyTokenTotals(),
             models: {},
+            heavyLiftingModels: [],
             relevantFileCount: todayFiles.length,
           }
-        : dayRecordFromReport(todayKey, todayEntry, todayFiles.length, this.timezone)
+        : dayRecordFromReport(
+            todayKey,
+            todayEntry,
+            buildHeavyLiftingModelBreakdown(
+              todayEntry.models,
+              todayEntry.totalTokens,
+              heavyLiftingWeights[todayKey],
+            ),
+            todayFiles.length,
+            this.timezone,
+          )
 
     const nextCache = normalizeCache(
       {
