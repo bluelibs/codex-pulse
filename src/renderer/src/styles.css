@@ -214,14 +214,12 @@ button {
   cursor: pointer;
   letter-spacing: 0.04em;
   transition:
-    transform 160ms ease,
     box-shadow 160ms ease,
     background 160ms ease,
     border-color 160ms ease;
 }
 
 .period-filter:hover {
-  transform: translateY(-1px);
   border-color: rgba(191, 122, 50, 0.24);
   box-shadow: 0 12px 24px rgba(46, 29, 14, 0.08);
 }
@@ -280,19 +278,16 @@ button {
   box-shadow: 0 18px 34px rgba(18, 22, 24, 0.2);
   cursor: pointer;
   transition:
-    transform 180ms ease,
     box-shadow 180ms ease;
 }
 
 .refresh-button:hover {
-  transform: translateY(-1px);
   box-shadow: 0 20px 38px rgba(18, 22, 24, 0.26);
 }
 
 .refresh-button:disabled {
   cursor: default;
   opacity: 0.48;
-  transform: none;
   box-shadow: 0 14px 26px rgba(18, 22, 24, 0.12);
 }
 
@@ -463,7 +458,6 @@ button {
   backdrop-filter: blur(18px);
   box-shadow: var(--shadow);
   transition:
-    transform 180ms ease,
     box-shadow 180ms ease,
     border-color 180ms ease;
 }
@@ -471,7 +465,6 @@ button {
 .metric-card:hover,
 .panel:hover,
 .signal-card:hover {
-  transform: translateY(-2px);
   box-shadow: 0 28px 80px rgba(46, 29, 14, 0.14);
   border-color: rgba(191, 122, 50, 0.26);
 }
@@ -767,6 +760,9 @@ button {
 }
 
 .signal-card {
+  --signal-track: rgba(255, 255, 255, 0.08);
+  --signal-primary: #d8a35b;
+  --signal-secondary: #88a9bb;
   position: relative;
   overflow: hidden;
   background:
@@ -836,8 +832,13 @@ button {
   border-radius: 999px;
   background:
     radial-gradient(circle at center, rgba(12, 15, 17, 0.98) 44%, transparent 45%),
-    conic-gradient(from 210deg, rgba(255, 255, 255, 0.1) 0deg, rgba(255, 255, 255, 0.1) 360deg),
-    conic-gradient(from 210deg, var(--copper-bright) 0deg, var(--copper) var(--signal-angle), rgba(255, 255, 255, 0.08) var(--signal-angle) 360deg);
+    conic-gradient(from 210deg, var(--signal-track) 0deg, var(--signal-track) 360deg),
+    conic-gradient(
+      from 210deg,
+      var(--signal-primary) 0deg,
+      var(--signal-primary) var(--signal-angle),
+      var(--signal-track) var(--signal-angle) 360deg
+    );
 }
 
 .signal-dial::before {
@@ -847,7 +848,12 @@ button {
   border-radius: inherit;
   background:
     radial-gradient(circle at center, rgba(14, 18, 20, 0.98) 52%, transparent 53%),
-    conic-gradient(from 200deg, rgba(77, 108, 123, 0.92) 0deg, rgba(77, 108, 123, 0.92) var(--cache-angle), rgba(255, 255, 255, 0.06) var(--cache-angle) 360deg);
+    conic-gradient(
+      from 200deg,
+      var(--signal-secondary) 0deg,
+      var(--signal-secondary) var(--cache-angle),
+      rgba(255, 255, 255, 0.06) var(--cache-angle) 360deg
+    );
 }
 
 .signal-dial-core {
@@ -876,6 +882,42 @@ button {
   margin: 0;
   color: rgba(247, 241, 232, 0.72);
   font-size: 0.84rem;
+}
+
+.signal-dial-key {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: -2px auto 18px;
+}
+
+.signal-dial-key-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(247, 241, 232, 0.78);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.signal-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.signal-swatch-primary {
+  background: var(--signal-primary);
+}
+
+.signal-swatch-secondary {
+  background: var(--signal-secondary);
 }
 
 .signal-metrics {
