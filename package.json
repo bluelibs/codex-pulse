@@ -42,7 +42,9 @@
   "build": {
     "appId": "com.theodordiaconu.codexpulse",
     "productName": "Codex Pulse",
+    "icon": "build/icon.png",
     "mac": {
+      "icon": "build/icon.png",
       "category": "public.app-category.developer-tools",
       "target": [
         "dmg",
@@ -51,6 +53,7 @@
     },
     "files": [
       "out/**/*",
+      "src/main/assets/**/*",
       "package.json"
     ]
   }

@@ -1,11 +1,11 @@
-import { app, BrowserWindow, Menu, Tray } from 'electron'
+import { app, BrowserWindow, Tray } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { registerIpc } from './ipc'
 import { createCcusageRunner } from './services/runCcusage'
 import { UsageDashboardService } from './services/usageDashboardService'
-import { createTrayIcon } from './trayIcon'
+import { createAppIcon, createTrayIcon } from './trayIcon'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -13,12 +13,9 @@ let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let isQuitting = false
 
-function revealWindow(window: BrowserWindow) {
-  if (process.platform === 'darwin') {
-    app.focus({ steal: true })
-    window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-  }
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
+function revealWindow(window: BrowserWindow) {
   if (window.isMinimized()) {
     window.restore()
   }
@@ -28,29 +25,42 @@ function revealWindow(window: BrowserWindow) {
   window.focus()
   window.moveTop()
 
+  if (process.platform === 'darwin') {
+    app.focus({ steal: true })
+  }
+
+  window.focus()
+  window.moveTop()
+
   setTimeout(() => {
     if (window.isDestroyed()) {
       return
     }
 
     window.setAlwaysOnTop(false)
+  }, 220)
+}
 
-    if (process.platform === 'darwin') {
-      window.setVisibleOnAllWorkspaces(false, { visibleOnFullScreen: true })
-    }
-  }, 180)
+function hideWindow(window: BrowserWindow) {
+  if (window.isDestroyed()) {
+    return
+  }
+
+  window.hide()
 }
 
 function createWindow() {
+  const appIcon = createAppIcon()
   const window = new BrowserWindow({
     width: 840,
     height: 760,
     minWidth: 720,
     minHeight: 700,
-    show: true,
+    show: false,
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#f3ede2',
     vibrancy: 'sidebar',
+    icon: appIcon.isEmpty() ? undefined : appIcon,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
@@ -64,7 +74,11 @@ function createWindow() {
     }
 
     event.preventDefault()
-    window.hide()
+    hideWindow(window)
+  })
+
+  window.once('ready-to-show', () => {
+    revealWindow(window)
   })
 
   if (process.env.VITE_DEV_SERVER_URL) {
@@ -76,13 +90,8 @@ function createWindow() {
   return window
 }
 
-function toggleWindow() {
+function showMainWindow() {
   if (!mainWindow) {
-    return
-  }
-
-  if (mainWindow.isVisible()) {
-    mainWindow.hide()
     return
   }
 
@@ -90,6 +99,17 @@ function toggleWindow() {
 }
 
 async function bootstrap() {
+  if (!hasSingleInstanceLock) {
+    app.quit()
+    return
+  }
+
+  const appIcon = createAppIcon()
+
+  if (process.platform === 'darwin' && app.dock && !appIcon.isEmpty()) {
+    app.dock.setIcon(appIcon)
+  }
+
   const service = new UsageDashboardService({
     cachePath: path.join(app.getPath('userData'), 'usage-cache.json'),
     mirrorRoot: path.join(app.getPath('userData'), 'codex-home-mirror'),
@@ -97,30 +117,11 @@ async function bootstrap() {
   })
 
   registerIpc(service)
-  mainWindow = createWindow()
-  revealWindow(mainWindow)
   tray = new Tray(createTrayIcon())
-
   tray.setToolTip('Codex Pulse')
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Show Codex Pulse', click: () => toggleWindow() },
-      { label: 'Refresh Usage', click: () => void service.refreshDashboard() },
-      { type: 'separator' },
-      {
-        label: 'Quit',
-        click: () => {
-          isQuitting = true
-          app.quit()
-        },
-      },
-    ]),
-  )
-  tray.on('click', () => toggleWindow())
+  tray.on('click', () => showMainWindow())
 
-  if (process.platform === 'darwin' && app.dock) {
-    app.dock.hide()
-  }
+  mainWindow = createWindow()
 
   void service.loadDashboard()
 }
@@ -131,12 +132,16 @@ app.on('before-quit', () => {
 
 app.whenReady().then(bootstrap)
 
+app.on('second-instance', () => {
+  showMainWindow()
+})
+
 app.on('activate', () => {
   if (!mainWindow) {
     return
   }
 
-  revealWindow(mainWindow)
+  showMainWindow()
 })
 
 app.on('window-all-closed', () => {

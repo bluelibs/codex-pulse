@@ -552,8 +552,9 @@ export function App() {
           </div>
 
           <div className="hero-meta">
-            <span>Refreshes automatically every 10 minutes.</span>
-            <span>
+            <span className="hero-meta-kicker">Live cadence</span>
+            <strong>Refreshes automatically every 10 minutes.</strong>
+            <span className="hero-meta-detail">
               Last update: {formatMonthDayTime(deferredSnapshot.generatedAt)}
             </span>
           </div>
