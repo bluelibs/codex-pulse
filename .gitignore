@@ -1,0 +1,8 @@
+dist
+dist-electron
+out
+release
+node_modules
+.DS_Store
+coverage
+
