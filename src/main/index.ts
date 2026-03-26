@@ -13,13 +13,41 @@ let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let isQuitting = false
 
+function revealWindow(window: BrowserWindow) {
+  if (process.platform === 'darwin') {
+    app.focus({ steal: true })
+    window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  }
+
+  if (window.isMinimized()) {
+    window.restore()
+  }
+
+  window.setAlwaysOnTop(true, 'screen-saver')
+  window.show()
+  window.focus()
+  window.moveTop()
+
+  setTimeout(() => {
+    if (window.isDestroyed()) {
+      return
+    }
+
+    window.setAlwaysOnTop(false)
+
+    if (process.platform === 'darwin') {
+      window.setVisibleOnAllWorkspaces(false, { visibleOnFullScreen: true })
+    }
+  }, 180)
+}
+
 function createWindow() {
   const window = new BrowserWindow({
-    width: 560,
+    width: 840,
     height: 760,
-    minWidth: 500,
+    minWidth: 720,
     minHeight: 700,
-    show: false,
+    show: true,
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#f3ede2',
     vibrancy: 'sidebar',
@@ -37,10 +65,6 @@ function createWindow() {
 
     event.preventDefault()
     window.hide()
-  })
-
-  window.once('ready-to-show', () => {
-    window.show()
   })
 
   if (process.env.VITE_DEV_SERVER_URL) {
@@ -62,8 +86,7 @@ function toggleWindow() {
     return
   }
 
-  mainWindow.show()
-  mainWindow.focus()
+  revealWindow(mainWindow)
 }
 
 async function bootstrap() {
@@ -75,6 +98,7 @@ async function bootstrap() {
 
   registerIpc(service)
   mainWindow = createWindow()
+  revealWindow(mainWindow)
   tray = new Tray(createTrayIcon())
 
   tray.setToolTip('Codex Pulse')
@@ -98,7 +122,6 @@ async function bootstrap() {
     app.dock.hide()
   }
 
-  void service.primeCache()
   void service.loadDashboard()
 }
 
@@ -113,7 +136,7 @@ app.on('activate', () => {
     return
   }
 
-  mainWindow.show()
+  revealWindow(mainWindow)
 })
 
 app.on('window-all-closed', () => {

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { DashboardListener } from '@shared/usage'
+import type { DashboardListener, DashboardResponse } from '@shared/usage'
 
 import { App } from '../App'
 import { mockDashboardResponse } from '../mockDashboard'
@@ -12,11 +12,17 @@ describe('App', () => {
 
   beforeEach(() => {
     listener = null
+    window.scrollTo = vi.fn()
 
     window.codexPulse = {
       getCachedDashboard: vi.fn().mockResolvedValue(mockDashboardResponse),
       loadDashboard: vi.fn().mockResolvedValue(mockDashboardResponse),
       refreshDashboard: vi.fn().mockResolvedValue({
+        ...mockDashboardResponse,
+        isRefreshing: false,
+        stale: false,
+      }),
+      clearCacheAndReload: vi.fn().mockResolvedValue({
         ...mockDashboardResponse,
         isRefreshing: false,
         stale: false,
@@ -33,9 +39,10 @@ describe('App', () => {
   it('renders the snapshot returned by the preload bridge', async () => {
     render(<App />)
 
-    expect(await screen.findByText('Today and this week, without the terminal detour.')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'This week' })).toBeInTheDocument()
+    expect(screen.getByText('Refreshes automatically every 10 minutes.')).toBeInTheDocument()
     expect(screen.getAllByText('913K').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText('$4.56')).toBeInTheDocument()
+    expect(screen.getAllByText('$4.56').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByText('gpt-5.4').length).toBeGreaterThan(0)
   })
 
@@ -43,11 +50,61 @@ describe('App', () => {
     render(<App />)
     const user = userEvent.setup()
 
-    await screen.findByText('Today and this week, without the terminal detour.')
+    await screen.findByRole('button', { name: 'This week' })
     expect(listener).not.toBeNull()
     await user.click(screen.getByRole('button', { name: 'Refresh' }))
 
     expect(window.codexPulse.refreshDashboard).toHaveBeenCalledTimes(1)
+  })
+
+  it('disables refresh while a refresh request is in flight', async () => {
+    let resolveRefresh!: (value: DashboardResponse) => void
+    window.codexPulse.refreshDashboard = vi.fn(
+      () =>
+        new Promise<DashboardResponse>((resolve) => {
+          resolveRefresh = resolve
+        }),
+    )
+
+    render(<App />)
+    const user = userEvent.setup()
+
+    await screen.findByRole('button', { name: 'This week' })
+    const refreshButton = screen.getByRole('button', { name: 'Refresh' })
+
+    await user.click(refreshButton)
+
+    expect(refreshButton).toBeDisabled()
+
+    resolveRefresh({
+      ...mockDashboardResponse,
+      isRefreshing: false,
+      stale: false,
+    })
+
+    expect(await screen.findByRole('button', { name: 'Refresh' })).not.toBeDisabled()
+  })
+
+  it('clears the persisted cache and reloads when requested', async () => {
+    render(<App />)
+    const user = userEvent.setup()
+
+    await screen.findByRole('button', { name: 'This week' })
+    await user.click(screen.getByRole('button', { name: 'Clear Cache & Reload' }))
+
+    expect(window.codexPulse.clearCacheAndReload).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText('Refreshes automatically every 10 minutes.')).toBeInTheDocument()
+  })
+
+  it('switches the dashboard period when a filter is selected', async () => {
+    render(<App />)
+    const user = userEvent.setup()
+
+    await screen.findByRole('button', { name: 'This week' })
+    await user.click(screen.getByRole('button', { name: 'This month' }))
+
+    expect(await screen.findByText('This month cache reuse')).toBeInTheDocument()
+    expect(screen.getByText('Month rhythm')).toBeInTheDocument()
   })
 
   it('uses mock data in a plain browser when the preload bridge is unavailable', async () => {
@@ -62,8 +119,8 @@ describe('App', () => {
 
     render(<App />)
 
-    expect(await screen.findByText('Today and this week, without the terminal detour.')).toBeInTheDocument()
-    expect(screen.getByText('Fresh snapshot')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'This week' })).toBeInTheDocument()
+    expect(screen.getByText(/Last update: Mar 26, 2:34 PM/)).toBeInTheDocument()
   })
 
   it('shows a helpful error in Electron when the preload bridge is unavailable', async () => {

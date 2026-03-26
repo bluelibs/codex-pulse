@@ -22,6 +22,17 @@ export default defineConfig({
   },
   renderer: {
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              return 'vendor'
+            }
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@renderer': path.resolve(__dirname, 'src/renderer/src'),

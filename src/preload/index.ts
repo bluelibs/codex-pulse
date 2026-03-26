@@ -6,6 +6,7 @@ const api: CodexPulseApi = {
   getCachedDashboard: () => ipcRenderer.invoke('dashboard:cached') as Promise<DashboardResponse>,
   loadDashboard: () => ipcRenderer.invoke('dashboard:load') as Promise<DashboardResponse>,
   refreshDashboard: () => ipcRenderer.invoke('dashboard:refresh') as Promise<DashboardResponse>,
+  clearCacheAndReload: () => ipcRenderer.invoke('dashboard:clear-cache') as Promise<DashboardResponse>,
   onDashboardUpdated: (listener: DashboardListener) => {
     const handler = (_event: unknown, payload: DashboardResponse) => {
       listener(payload)

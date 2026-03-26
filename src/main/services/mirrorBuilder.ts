@@ -96,15 +96,19 @@ export async function rebuildMirror(mirrorRoot: string, files: FileSignature[]) 
 
   const existingEntries = await collectMirrorEntries(sessionsRoot)
 
-  for (const existingPath of existingEntries) {
-    if (!desiredLinks.has(existingPath)) {
-      await rm(existingPath, { force: true, recursive: true })
-    }
-  }
+  await Promise.all(
+    existingEntries
+      .filter((existingPath) => !desiredLinks.has(existingPath))
+      .map(async (existingPath) => {
+        await rm(existingPath, { force: true, recursive: true })
+      }),
+  )
 
-  for (const [linkPath, target] of desiredLinks) {
-    await ensureSymlink(target, linkPath)
-  }
+  await Promise.all(
+    [...desiredLinks].map(async ([linkPath, target]) => {
+      await ensureSymlink(target, linkPath)
+    }),
+  )
 
   await pruneEmptyDirectories(sessionsRoot, sessionsRoot)
 

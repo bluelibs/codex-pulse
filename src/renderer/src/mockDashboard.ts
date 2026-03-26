@@ -1,5 +1,35 @@
 import type { DashboardResponse } from '@shared/usage'
 
+function makeDay(date: string, totalTokens: number, costUSD: number) {
+  return {
+    id: date,
+    label: date,
+    period: {
+      label: date,
+      rangeStart: date,
+      rangeEnd: date,
+      inputTokens: totalTokens - 12,
+      cachedInputTokens: Math.max(totalTokens - 24, 0),
+      outputTokens: 8,
+      reasoningOutputTokens: 4,
+      totalTokens,
+      costUSD,
+    },
+    models: [
+      {
+        name: 'gpt-5.4',
+        inputTokens: totalTokens - 12,
+        cachedInputTokens: Math.max(totalTokens - 24, 0),
+        outputTokens: 8,
+        reasoningOutputTokens: 4,
+        totalTokens,
+        isFallback: false,
+        tokenShare: 1,
+      },
+    ],
+  }
+}
+
 export const mockDashboardResponse: DashboardResponse = {
   snapshot: {
     generatedAt: '2026-03-26T12:34:00.000Z',
@@ -30,28 +60,28 @@ export const mockDashboardResponse: DashboardResponse = {
       {
         id: '2026-03-24',
         label: 'Mar 24',
-        inputTokens: 400_000,
-        cachedInputTokens: 280_000,
+        inputTokens: 1_029_000 - 12,
+        cachedInputTokens: 1_029_000 - 24,
         outputTokens: 5_000,
         reasoningOutputTokens: 1_000,
-        totalTokens: 406_000,
-        costUSD: 0.86,
+        totalTokens: 1_029_000,
+        costUSD: 1.8,
       },
       {
         id: '2026-03-25',
         label: 'Mar 25',
-        inputTokens: 700_000,
-        cachedInputTokens: 500_000,
+        inputTokens: 1_000_000 - 12,
+        cachedInputTokens: 1_000_000 - 24,
         outputTokens: 8_000,
         reasoningOutputTokens: 1_000,
-        totalTokens: 709_000,
-        costUSD: 1.18,
+        totalTokens: 1_000_000,
+        costUSD: 1.53,
       },
       {
         id: '2026-03-26',
         label: 'Mar 26',
-        inputTokens: 900_000,
-        cachedInputTokens: 720_000,
+        inputTokens: 913_000 - 12,
+        cachedInputTokens: 913_000 - 24,
         outputTokens: 11_000,
         reasoningOutputTokens: 2_000,
         totalTokens: 913_000,
@@ -59,87 +89,16 @@ export const mockDashboardResponse: DashboardResponse = {
       },
     ],
     dateGroups: [
-      {
-        id: '2026-03-24',
-        label: 'Mar 24',
-        period: {
-          label: 'Mar 24',
-          rangeStart: '2026-03-24',
-          rangeEnd: '2026-03-24',
-          inputTokens: 400_000,
-          cachedInputTokens: 280_000,
-          outputTokens: 5_000,
-          reasoningOutputTokens: 1_000,
-          totalTokens: 406_000,
-          costUSD: 0.86,
-        },
-        models: [
-          {
-            name: 'gpt-5.4',
-            inputTokens: 400_000,
-            cachedInputTokens: 280_000,
-            outputTokens: 5_000,
-            reasoningOutputTokens: 1_000,
-            totalTokens: 406_000,
-            isFallback: false,
-            tokenShare: 1,
-          },
-        ],
-      },
-      {
-        id: '2026-03-25',
-        label: 'Mar 25',
-        period: {
-          label: 'Mar 25',
-          rangeStart: '2026-03-25',
-          rangeEnd: '2026-03-25',
-          inputTokens: 700_000,
-          cachedInputTokens: 500_000,
-          outputTokens: 8_000,
-          reasoningOutputTokens: 1_000,
-          totalTokens: 709_000,
-          costUSD: 1.18,
-        },
-        models: [
-          {
-            name: 'gpt-5.4',
-            inputTokens: 700_000,
-            cachedInputTokens: 500_000,
-            outputTokens: 8_000,
-            reasoningOutputTokens: 1_000,
-            totalTokens: 709_000,
-            isFallback: false,
-            tokenShare: 1,
-          },
-        ],
-      },
-      {
-        id: '2026-03-26',
-        label: 'Mar 26',
-        period: {
-          label: 'Mar 26',
-          rangeStart: '2026-03-26',
-          rangeEnd: '2026-03-26',
-          inputTokens: 900_000,
-          cachedInputTokens: 720_000,
-          outputTokens: 11_000,
-          reasoningOutputTokens: 2_000,
-          totalTokens: 913_000,
-          costUSD: 1.23,
-        },
-        models: [
-          {
-            name: 'gpt-5.4',
-            inputTokens: 900_000,
-            cachedInputTokens: 720_000,
-            outputTokens: 11_000,
-            reasoningOutputTokens: 2_000,
-            totalTokens: 913_000,
-            isFallback: false,
-            tokenShare: 1,
-          },
-        ],
-      },
+      makeDay('2026-01-15', 180_000, 0.26),
+      makeDay('2026-02-07', 240_000, 0.33),
+      makeDay('2026-02-18', 355_000, 0.47),
+      makeDay('2026-02-27', 410_000, 0.54),
+      makeDay('2026-03-04', 510_000, 0.71),
+      makeDay('2026-03-12', 640_000, 0.89),
+      makeDay('2026-03-18', 720_000, 1.02),
+      makeDay('2026-03-24', 1_029_000, 1.8),
+      makeDay('2026-03-25', 1_000_000, 1.53),
+      makeDay('2026-03-26', 913_000, 1.23),
     ],
     models: [
       {
@@ -159,4 +118,3 @@ export const mockDashboardResponse: DashboardResponse = {
   isRefreshing: false,
   stale: false,
 }
-

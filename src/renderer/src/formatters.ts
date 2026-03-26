@@ -29,6 +29,13 @@ const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
   timeStyle: 'short',
 })
 
+const monthDayTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+})
+
 export function formatTokens(value: number) {
   return (value >= 1_000_000 ? compactTokenFormatters.long : compactTokenFormatters.short).format(value)
 }
@@ -47,4 +54,8 @@ export function formatInteger(value: number) {
 
 export function formatDateTime(value: string) {
   return dateTimeFormatter.format(new Date(value))
+}
+
+export function formatMonthDayTime(value: string) {
+  return monthDayTimeFormatter.format(new Date(value))
 }

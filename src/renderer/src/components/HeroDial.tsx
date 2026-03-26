@@ -6,40 +6,44 @@ import { formatCurrency, formatPercent, formatTokens } from '@renderer/formatter
 
 type HeroDialProps = {
   today: PeriodTotals
-  week: PeriodTotals
+  focusPeriod: PeriodTotals
   leadingModel?: ModelBreakdown
+  filterLabel: string
 }
 
-export function HeroDial({ today, week, leadingModel }: HeroDialProps) {
-  const todayShare = week.totalTokens === 0 ? 0 : today.totalTokens / week.totalTokens
+export function HeroDial({ today, focusPeriod, leadingModel, filterLabel }: HeroDialProps) {
+  const todayShare = focusPeriod.totalTokens === 0 ? 0 : today.totalTokens / focusPeriod.totalTokens
   const cacheShare = today.inputTokens === 0 ? 0 : today.cachedInputTokens / today.inputTokens
   const dialStyle = {
     '--signal-angle': `${Math.max(todayShare * 320, 28)}deg`,
     '--cache-angle': `${Math.max(cacheShare * 320, 22)}deg`,
   } as CSSProperties
+  const heading =
+    filterLabel === 'Today'
+      ? 'Today at a glance'
+      : `Today’s share of ${filterLabel.toLowerCase()}`
 
   return (
     <aside className="signal-card" style={dialStyle}>
       <div className="signal-card-header">
         <div>
-          <p className="eyebrow">Live signal</p>
-          <h2>Today&apos;s share of the week</h2>
+          <h2>{heading}</h2>
         </div>
-        <span>{leadingModel?.name ?? 'Awaiting model'}</span>
+        <span className="signal-model-badge">{leadingModel?.name ?? 'Awaiting model'}</span>
       </div>
 
       <div className="signal-dial">
         <div className="signal-dial-core">
-          <span>today load</span>
+          <span>today volume</span>
           <strong>{formatTokens(today.totalTokens)}</strong>
-          <p>{formatPercent(todayShare)} of week-to-date</p>
+          <p>{formatPercent(todayShare)} of {filterLabel.toLowerCase()}</p>
         </div>
       </div>
 
       <dl className="signal-metrics">
         <div>
-          <dt>Today cost</dt>
-          <dd>{formatCurrency(today.costUSD)}</dd>
+          <dt>Period cost</dt>
+          <dd>{formatCurrency(focusPeriod.costUSD)}</dd>
         </div>
         <div>
           <dt>Cache reuse</dt>
@@ -53,4 +57,3 @@ export function HeroDial({ today, week, leadingModel }: HeroDialProps) {
     </aside>
   )
 }
-

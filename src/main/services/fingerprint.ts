@@ -186,17 +186,18 @@ export async function buildCoarseSentinel(paths: CodexPaths, todayKey: string) {
   })
 }
 
-export async function collectRelevantFiles(paths: CodexPaths, earliestDateKey: string) {
+export async function collectRelevantFiles(paths: CodexPaths, earliestDateKey: string, latestDateKey?: string) {
   const thresholdDateKey = shiftDateKey(earliestDateKey, -1)
   const thresholdParts = parseDateKey(thresholdDateKey)
   const thresholdMs = toUtcMs(thresholdDateKey)
+  const latestThresholdMs = latestDateKey == null ? Number.POSITIVE_INFINITY : toUtcMs(shiftDateKey(latestDateKey, 1))
   const [sessionFiles, archivedFiles] = await Promise.all([
     walkJsonlFiles(paths.sessionsDir, 'live', thresholdParts),
     walkJsonlFiles(paths.archivedDir, 'archived', thresholdParts),
   ])
 
   return [...sessionFiles, ...archivedFiles]
-    .filter((file) => file.mtimeMs >= thresholdMs)
+    .filter((file) => file.mtimeMs >= thresholdMs && file.mtimeMs < latestThresholdMs)
     .sort((left, right) => left.relativePath.localeCompare(right.relativePath))
 }
 

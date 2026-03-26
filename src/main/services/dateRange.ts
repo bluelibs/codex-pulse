@@ -36,6 +36,13 @@ export function shiftDateKey(dateKey: string, dayDelta: number) {
   return shifted.toISOString().slice(0, 10)
 }
 
+export function shiftMonthKey(dateKey: string, monthDelta: number) {
+  const [year, month] = dateKey.split('-').map(Number)
+  const shifted = new Date(Date.UTC(year, month - 1 + monthDelta, 1))
+
+  return shifted.toISOString().slice(0, 10)
+}
+
 export function startOfIsoWeek(dateKey: string) {
   const [year, month, day] = dateKey.split('-').map(Number)
   const source = new Date(Date.UTC(year, month - 1, day))
@@ -43,6 +50,16 @@ export function startOfIsoWeek(dateKey: string) {
   const offset = weekday === 0 ? -6 : 1 - weekday
 
   return shiftDateKey(dateKey, offset)
+}
+
+export function startOfMonth(dateKey: string) {
+  const [year, month] = dateKey.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0, 10)
+}
+
+export function startOfYear(dateKey: string) {
+  const [year] = dateKey.split('-').map(Number)
+  return new Date(Date.UTC(year, 0, 1)).toISOString().slice(0, 10)
 }
 
 export function toCliDate(dateKey: string) {

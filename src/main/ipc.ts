@@ -6,6 +6,7 @@ export function registerIpc(service: UsageDashboardService) {
   ipcMain.handle('dashboard:cached', () => service.getCachedDashboard())
   ipcMain.handle('dashboard:load', () => service.loadDashboard())
   ipcMain.handle('dashboard:refresh', () => service.refreshDashboard())
+  ipcMain.handle('dashboard:clear-cache', () => service.clearCacheAndReload())
 
   return service.subscribe((response) => {
     for (const window of BrowserWindow.getAllWindows()) {

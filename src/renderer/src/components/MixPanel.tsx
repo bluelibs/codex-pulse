@@ -3,14 +3,15 @@ import type { PeriodTotals } from '@shared/usage'
 import { formatPercent, formatTokens } from '@renderer/formatters'
 
 type MixPanelProps = {
-  week: PeriodTotals
+  period: PeriodTotals
+  periodLabel: string
 }
 
-export function MixPanel({ week }: MixPanelProps) {
-  const cacheRatio = week.inputTokens === 0 ? 0 : week.cachedInputTokens / week.inputTokens
-  const outputTotal = week.outputTokens + week.reasoningOutputTokens
-  const outputRatio = week.totalTokens === 0 ? 0 : outputTotal / week.totalTokens
-  const inputRatio = week.totalTokens === 0 ? 0 : week.inputTokens / week.totalTokens
+export function MixPanel({ period, periodLabel }: MixPanelProps) {
+  const cacheRatio = period.inputTokens === 0 ? 0 : period.cachedInputTokens / period.inputTokens
+  const outputTotal = period.outputTokens + period.reasoningOutputTokens
+  const outputRatio = period.totalTokens === 0 ? 0 : outputTotal / period.totalTokens
+  const inputRatio = period.totalTokens === 0 ? 0 : period.inputTokens / period.totalTokens
 
   return (
     <section className="panel mix-panel">
@@ -19,7 +20,7 @@ export function MixPanel({ week }: MixPanelProps) {
           <p className="eyebrow">Efficiency</p>
           <h2>Token mix</h2>
         </div>
-        <span>Week to date</span>
+        <span>{periodLabel}</span>
       </div>
 
       <div className="mix-ring">
@@ -32,10 +33,10 @@ export function MixPanel({ week }: MixPanelProps) {
       <div className="mix-summary">
         <article>
           <span>Saved by cache</span>
-          <strong>{formatTokens(week.cachedInputTokens)}</strong>
+          <strong>{formatTokens(period.cachedInputTokens)}</strong>
         </article>
         <article>
-          <span>Response load</span>
+          <span>Output</span>
           <strong>{formatTokens(outputTotal)}</strong>
         </article>
       </div>
@@ -43,7 +44,7 @@ export function MixPanel({ week }: MixPanelProps) {
       <dl className="mix-rows">
         <div>
           <dt>Input heft</dt>
-          <dd>{formatTokens(week.inputTokens)}</dd>
+          <dd>{formatTokens(period.inputTokens)}</dd>
           <div className="mix-rail"><span style={{ width: `${Math.max(inputRatio * 100, 8)}%` }} /></div>
         </div>
         <div>
@@ -55,4 +56,3 @@ export function MixPanel({ week }: MixPanelProps) {
     </section>
   )
 }
-

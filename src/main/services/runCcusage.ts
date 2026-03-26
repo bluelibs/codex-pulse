@@ -75,7 +75,7 @@ export function createCcusageRunner(appPath: string): ReportRunner {
           '--timezone',
           timezone,
           '--locale',
-          'en-US',
+          'en-CA',
         ],
         {
           env: {

@@ -59,5 +59,6 @@ export type CodexPulseApi = {
   getCachedDashboard: () => Promise<DashboardResponse>
   loadDashboard: () => Promise<DashboardResponse>
   refreshDashboard: () => Promise<DashboardResponse>
+  clearCacheAndReload: () => Promise<DashboardResponse>
   onDashboardUpdated: (listener: DashboardListener) => () => void
 }
