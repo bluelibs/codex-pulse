@@ -27,6 +27,15 @@ export type ModelBreakdown = ModelTotals & {
   tokenShare: number
 }
 
+export type CodexWeeklyLimit = {
+  limitId: string | null
+  planType: string | null
+  sampledAt: string
+  resetsAt: string
+  usedPercent: number
+  remainingPercent: number
+}
+
 export type DateGroup = {
   id: string
   label: string
@@ -38,6 +47,7 @@ export type DateGroup = {
 export type DashboardSnapshot = {
   generatedAt: string
   timezone: string
+  codexWeeklyLimit: CodexWeeklyLimit | null
   today: PeriodTotals
   week: PeriodTotals
   trend: TrendPoint[]

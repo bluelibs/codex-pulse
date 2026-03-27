@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { z } from 'zod'
 
-import type { DashboardSnapshot, ModelTotals, TokenTotals } from '@shared/usage'
+import type { CodexWeeklyLimit, DashboardSnapshot, ModelTotals, TokenTotals } from '@shared/usage'
 
 const tokenTotalsSchema = z.object({
   inputTokens: z.number(),
@@ -28,6 +28,15 @@ const modelBreakdownSchema = modelTotalsSchema.extend({
   tokenShare: z.number(),
 })
 
+const codexWeeklyLimitSchema = z.object({
+  limitId: z.string().nullable(),
+  planType: z.string().nullable(),
+  sampledAt: z.string(),
+  resetsAt: z.string(),
+  usedPercent: z.number(),
+  remainingPercent: z.number(),
+}) satisfies z.ZodType<CodexWeeklyLimit>
+
 const legacyCacheSchema = z.object({
   version: z.literal(1),
   coarseSentinel: z.string(),
@@ -44,7 +53,7 @@ const cachedDaySchema = z.object({
   relevantFileCount: z.number().int().nonnegative(),
 })
 
-const cacheSchema = z.object({
+const cacheSchemaV3 = z.object({
   version: z.literal(3),
   timezone: z.string(),
   weekStartKey: z.string(),
@@ -57,10 +66,28 @@ const cacheSchema = z.object({
   days: z.record(z.string(), cachedDaySchema),
 })
 
+const cacheSchema = z.object({
+  version: z.literal(4),
+  timezone: z.string(),
+  weekStartKey: z.string(),
+  retentionStartKey: z.string().optional(),
+  lastTodayRefreshAt: z.string(),
+  todayFingerprint: z.string(),
+  coarseSentinel: z.string(),
+  mirrorBuiltAt: z.string(),
+  codexWeeklyLimit: codexWeeklyLimitSchema.nullable(),
+  snapshot: z.custom<DashboardSnapshot>(),
+  days: z.record(z.string(), cachedDaySchema),
+})
+
 export type LegacyDashboardCacheDocument = z.infer<typeof legacyCacheSchema>
+export type DashboardCacheDocumentV3 = z.infer<typeof cacheSchemaV3>
 export type CachedDayDocument = z.infer<typeof cachedDaySchema>
 export type DashboardCacheDocument = z.infer<typeof cacheSchema>
-export type AnyDashboardCacheDocument = LegacyDashboardCacheDocument | DashboardCacheDocument
+export type AnyDashboardCacheDocument =
+  | LegacyDashboardCacheDocument
+  | DashboardCacheDocumentV3
+  | DashboardCacheDocument
 
 export async function readCacheDocument(cachePath: string) {
   try {
@@ -69,6 +96,10 @@ export async function readCacheDocument(cachePath: string) {
 
     if (parsed?.version === 1) {
       return legacyCacheSchema.parse(parsed)
+    }
+
+    if (parsed?.version === 3) {
+      return cacheSchemaV3.parse(parsed)
     }
 
     return cacheSchema.parse(parsed)

@@ -74,6 +74,14 @@ export const mockDashboardResponse: DashboardResponse = {
   snapshot: {
     generatedAt: '2026-03-26T12:34:00.000Z',
     timezone: 'UTC',
+    codexWeeklyLimit: {
+      limitId: 'codex',
+      planType: 'pro',
+      sampledAt: '2026-03-26T12:32:00.000Z',
+      resetsAt: '2026-03-29T09:00:00.000Z',
+      usedPercent: 76,
+      remainingPercent: 24,
+    },
     today: {
       label: 'Today',
       rangeStart: '2026-03-26',

@@ -56,6 +56,7 @@ export function assembleDashboardSnapshot({
   return {
     generatedAt: new Date().toISOString(),
     timezone,
+    codexWeeklyLimit: null,
     today: toPeriodTotals('Today', todayKey, todayKey, todayReport.totals),
     week: toPeriodTotals('Week to date', weekStartKey, todayKey, weekReport.totals),
     trend,

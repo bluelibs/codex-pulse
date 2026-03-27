@@ -40,6 +40,7 @@ describe('App', () => {
     render(<App />)
 
     expect(await screen.findByRole('button', { name: 'This week' })).toBeInTheDocument()
+    expect(screen.getByText('24% left')).toBeInTheDocument()
     expect(screen.getByText('Refreshes automatically every 10 minutes.')).toBeInTheDocument()
     expect(screen.getAllByText('913K').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByText('$4.56').length).toBeGreaterThanOrEqual(2)
@@ -160,6 +161,20 @@ describe('App', () => {
     expect(await screen.findByText('gpt-5.4-xhigh')).toBeInTheDocument()
     expect(screen.getByText('gpt-5.4-high')).toBeInTheDocument()
     expect(screen.getAllByText('gpt-5.4').length).toBeGreaterThan(0)
+  })
+
+  it('shows a muted weekly limit state when no rate-limit data is available', async () => {
+    window.codexPulse.loadDashboard = vi.fn().mockResolvedValue({
+      ...mockDashboardResponse,
+      snapshot: {
+        ...mockDashboardResponse.snapshot!,
+        codexWeeklyLimit: null,
+      },
+    })
+
+    render(<App />)
+
+    expect(await screen.findByText('Codex weekly limit will appear after a fresh rate-limit event lands.')).toBeInTheDocument()
   })
 
   it('uses mock data in a plain browser when the preload bridge is unavailable', async () => {

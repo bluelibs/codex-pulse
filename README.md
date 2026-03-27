@@ -6,6 +6,7 @@ Codex Pulse is a small macOS Electron app that turns local Codex usage data into
 
 - Lives in the macOS menu bar and hides the dock icon on launch
 - Opens a compact desktop window with usage metrics and model mix
+- Shows the latest local Codex weekly limit state when recent rate-limit data is available
 - Reads usage data from the local Codex data directory
 - Reuses cached snapshots for fast startup
 - Refreshes in the background when Codex activity changes
@@ -31,6 +32,7 @@ The app is designed for a "launch, glance, refresh" workflow:
 - `Week rhythm`: per-day trend bars
 - `Token mix`: input vs output and cached reuse
 - `Models`: token share by model, including fallback flags
+- `Codex weekly limit`: the latest locally observed weekly usage percentage and reset time
 
 If cached data exists and Codex activity has changed since the last snapshot, the renderer gets the cached view immediately while a refresh runs in the background.
 

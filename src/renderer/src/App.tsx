@@ -22,6 +22,7 @@ import { MetricCard } from "./components/MetricCard";
 import { MixPanel } from "./components/MixPanel";
 import { ModelPanel } from "./components/ModelPanel";
 import { TrendPanel } from "./components/TrendPanel";
+import { CodexLimitBar } from "./components/CodexLimitBar";
 import { formatInteger, formatMonthDayTime, formatPercent } from "./formatters";
 import { mockDashboardResponse } from "./mockDashboard";
 
@@ -530,6 +531,10 @@ export function App() {
           >
             Refresh
           </button>
+        </div>
+
+        <div className="hero-limit-row reveal reveal-delay-2">
+          <CodexLimitBar limit={deferredSnapshot.codexWeeklyLimit} />
         </div>
 
         <div className="hero-copy-block reveal reveal-delay-2">

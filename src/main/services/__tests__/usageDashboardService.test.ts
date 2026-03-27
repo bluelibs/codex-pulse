@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, utimes, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -137,6 +137,41 @@ function makeHistoryReport(todayKey: string, todayTokens: number, totalTokens: n
   }
 }
 
+function makeTokenCountLine({
+  timestamp,
+  usedPercent,
+  resetsAt,
+}: {
+  timestamp: string
+  usedPercent: number
+  resetsAt: number
+}) {
+  return JSON.stringify({
+    timestamp,
+    type: 'event_msg',
+    payload: {
+      type: 'token_count',
+      rate_limits: {
+        limit_id: 'codex',
+        plan_type: 'pro',
+        secondary: {
+          used_percent: usedPercent,
+          window_minutes: 10080,
+          resets_at: resetsAt,
+        },
+      },
+    },
+  })
+}
+
+async function writeTestFile(filePath: string, contents: string, mtimeIso: string) {
+  await mkdir(path.dirname(filePath), { recursive: true })
+  await writeFile(filePath, contents, 'utf8')
+
+  const timestamp = new Date(mtimeIso)
+  await utimes(filePath, timestamp, timestamp)
+}
+
 beforeEach(() => {
   vi.restoreAllMocks()
 })
@@ -161,11 +196,9 @@ describe('UsageDashboardService', () => {
         : makeHistoryReport('2026-03-26', 1200, 6400, 1.84),
     )
 
-    await mkdir(path.dirname(sessionsFile), { recursive: true })
-    await mkdir(path.dirname(archivedFile), { recursive: true })
-    await writeFile(sessionsFile, '{"type":"token_count"}\n', 'utf8')
-    await writeFile(archivedFile, '{"type":"token_count"}\n', 'utf8')
-    await writeFile(historyFile, '{"type":"history"}\n', 'utf8')
+    await writeTestFile(sessionsFile, '{"type":"token_count"}\n', '2026-03-26T12:00:00.000Z')
+    await writeTestFile(archivedFile, '{"type":"token_count"}\n', '2026-03-25T12:00:00.000Z')
+    await writeTestFile(historyFile, '{"type":"history"}\n', '2026-03-26T12:00:00.000Z')
 
     process.env.CODEX_HOME = codexHome
 
@@ -195,6 +228,57 @@ describe('UsageDashboardService', () => {
     expect(runner).toHaveBeenCalledTimes(1)
   })
 
+  it('captures the latest codex weekly limit from session logs', async () => {
+    const root = await makeTempRoot()
+    const codexHome = path.join(root, '.codex')
+    const sessionsFile = path.join(codexHome, 'sessions', '2026', '03', '26', 'active.jsonl')
+    const runner = vi.fn<(request: ReportRequest) => Promise<CcusageDailyReport>>()
+
+    runner.mockImplementation(async (request) =>
+      request.since === '2026-03-26'
+        ? makeReport('2026-03-26', 1200, 0.34)
+        : makeHistoryReport('2026-03-26', 1200, 6400, 1.84),
+    )
+
+    await writeTestFile(
+      sessionsFile,
+      [
+        makeTokenCountLine({
+          timestamp: '2026-03-26T09:00:00.000Z',
+          usedPercent: 61,
+          resetsAt: 1774774800,
+        }),
+        makeTokenCountLine({
+          timestamp: '2026-03-26T12:00:00.000Z',
+          usedPercent: 76,
+          resetsAt: 1774774800,
+        }),
+      ].join('\n'),
+      '2026-03-26T12:00:00.000Z',
+    )
+
+    process.env.CODEX_HOME = codexHome
+
+    const service = new UsageDashboardService({
+      cachePath: path.join(root, 'cache', 'usage.json'),
+      mirrorRoot: path.join(root, 'mirror'),
+      runner,
+      timezone: 'UTC',
+      now: () => new Date('2026-03-26T12:30:00.000Z'),
+    })
+
+    const response = await service.loadDashboard()
+
+    expect(response.snapshot?.codexWeeklyLimit).toEqual({
+      limitId: 'codex',
+      planType: 'pro',
+      sampledAt: '2026-03-26T12:00:00.000Z',
+      resetsAt: '2026-03-29T09:00:00.000Z',
+      usedPercent: 76,
+      remainingPercent: 24,
+    })
+  })
+
   it('returns cached data immediately and refreshes only today after the ttl expires', async () => {
     const root = await makeTempRoot()
     const codexHome = path.join(root, '.codex')
@@ -215,8 +299,7 @@ describe('UsageDashboardService', () => {
       }),
     )
 
-    await mkdir(path.dirname(sessionsFile), { recursive: true })
-    await writeFile(sessionsFile, '{"type":"token_count"}\n', 'utf8')
+    await writeTestFile(sessionsFile, '{"type":"token_count"}\n', '2026-03-26T12:00:00.000Z')
 
     process.env.CODEX_HOME = codexHome
 
@@ -233,7 +316,7 @@ describe('UsageDashboardService', () => {
     expect(runner).toHaveBeenCalledTimes(1)
 
     now = new Date('2026-03-26T12:16:00.000Z')
-    await writeFile(sessionsFile, '{"type":"token_count"}\n{"type":"late_update"}\n', 'utf8')
+    await writeTestFile(sessionsFile, '{"type":"token_count"}\n{"type":"late_update"}\n', '2026-03-26T12:16:00.000Z')
 
     const cachedView = await service.loadDashboard()
 
@@ -270,24 +353,24 @@ describe('UsageDashboardService', () => {
 
     runner.mockResolvedValue(makeHistoryReport('2026-03-26', 1200, 6400, 1.84))
 
-    await mkdir(path.dirname(sessionsToday), { recursive: true })
-    await mkdir(path.dirname(sessionsYesterday), { recursive: true })
-    await writeFile(sessionsToday, '{"type":"token_count"}\n', 'utf8')
-    await writeFile(sessionsYesterday, '{"type":"token_count"}\n', 'utf8')
+    await writeTestFile(sessionsToday, '{"type":"token_count"}\n', '2026-03-26T12:00:00.000Z')
+    await writeTestFile(sessionsYesterday, '{"type":"token_count"}\n', '2026-03-25T12:00:00.000Z')
     await mkdir(path.dirname(cachePath), { recursive: true })
     await writeFile(
       cachePath,
       JSON.stringify({
-        version: 3,
+        version: 4,
         timezone: 'UTC',
         weekStartKey: '2026-03-23',
         lastTodayRefreshAt: '2026-03-26T12:00:00.000Z',
         todayFingerprint: 'fresh',
         coarseSentinel: '{}',
         mirrorBuiltAt: '2026-03-26T12:00:00.000Z',
+        codexWeeklyLimit: null,
         snapshot: {
           generatedAt: '2026-03-26T12:00:00.000Z',
           timezone: 'UTC',
+          codexWeeklyLimit: null,
           today: {
             label: 'Today',
             rangeStart: '2026-03-26',
@@ -445,8 +528,7 @@ describe('UsageDashboardService', () => {
         : makeHistoryReport('2026-03-26', 1200, 1200, 0.34),
     )
 
-    await mkdir(path.dirname(sessionsFile), { recursive: true })
-    await writeFile(
+    await writeTestFile(
       sessionsFile,
       [
         JSON.stringify({
@@ -490,7 +572,7 @@ describe('UsageDashboardService', () => {
           },
         }),
       ].join('\n'),
-      'utf8',
+      '2026-03-26T12:00:00.000Z',
     )
 
     process.env.CODEX_HOME = codexHome

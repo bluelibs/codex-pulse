@@ -1,6 +1,7 @@
 import { rm } from 'node:fs/promises'
 
 import type {
+  CodexWeeklyLimit,
   DashboardListener,
   DashboardResponse,
   DashboardSnapshot,
@@ -8,8 +9,18 @@ import type {
   TokenTotals,
 } from '@shared/usage'
 
-import type { CachedDayDocument, DashboardCacheDocument, LegacyDashboardCacheDocument } from './cacheDocument'
+import type {
+  CachedDayDocument,
+  DashboardCacheDocument,
+  DashboardCacheDocumentV3,
+  LegacyDashboardCacheDocument,
+} from './cacheDocument'
 import { readCacheDocument, writeCacheDocument } from './cacheDocument'
+import {
+  expireCodexWeeklyLimit,
+  extractCodexWeeklyLimit,
+  selectCurrentCodexWeeklyLimit,
+} from './codexWeeklyLimit'
 import { getDateKey, shiftMonthKey, startOfIsoWeek, startOfMonth, startOfYear } from './dateRange'
 import {
   buildCoarseSentinel,
@@ -154,6 +165,7 @@ function buildSnapshotFromDays({
   timezone,
   generatedAt,
   mirrorBuiltAt,
+  codexWeeklyLimit,
 }: {
   days: CachedDayDocument[]
   todayKey: string
@@ -161,6 +173,7 @@ function buildSnapshotFromDays({
   timezone: string
   generatedAt: string
   mirrorBuiltAt: string
+  codexWeeklyLimit: CodexWeeklyLimit | null
 }): DashboardSnapshot {
   const sortedDays = [...days].sort((left, right) => left.dateKey.localeCompare(right.dateKey))
   const weekDays = sortedDays.filter((day) => day.dateKey >= weekStartKey && day.dateKey <= todayKey)
@@ -171,6 +184,7 @@ function buildSnapshotFromDays({
   return {
     generatedAt,
     timezone,
+    codexWeeklyLimit,
     today: toPeriodTotals('Today', todayKey, todayKey, todayDay?.totals ?? emptyTokenTotals()),
     week: toPeriodTotals('Week to date', weekStartKey, todayKey, weekTotals),
     trend: weekDays.map((day) => ({
@@ -213,6 +227,7 @@ function hasCurrentWeekHistory(cache: DashboardCacheDocument, weekStartKey: stri
 
 function normalizeCache(cache: DashboardCacheDocument, todayKey: string, weekStartKey: string, nowIso: string) {
   const retentionStartKey = getRetentionStartKey(todayKey)
+  const codexWeeklyLimit = expireCodexWeeklyLimit(cache.codexWeeklyLimit, new Date(nowIso))
   const days = Object.fromEntries(
     Object.values(cache.days)
       .filter((day) => day.dateKey >= retentionStartKey && day.dateKey <= todayKey)
@@ -223,6 +238,7 @@ function normalizeCache(cache: DashboardCacheDocument, todayKey: string, weekSta
     ...cache,
     weekStartKey,
     retentionStartKey,
+    codexWeeklyLimit,
     days,
     snapshot: buildSnapshotFromDays({
       days: Object.values(days),
@@ -231,12 +247,13 @@ function normalizeCache(cache: DashboardCacheDocument, todayKey: string, weekSta
       timezone: cache.timezone,
       generatedAt: nowIso,
       mirrorBuiltAt: cache.mirrorBuiltAt,
+      codexWeeklyLimit,
     }),
   } satisfies DashboardCacheDocument
 }
 
 function migrateLegacyCache(
-  cache: LegacyDashboardCacheDocument,
+  cache: LegacyDashboardCacheDocument | DashboardCacheDocumentV3,
   timezone: string,
   todayKey: string,
   weekStartKey: string,
@@ -272,14 +289,15 @@ function migrateLegacyCache(
   }
 
   const migrated: DashboardCacheDocument = {
-    version: 3,
+    version: 4,
     timezone,
     weekStartKey,
     retentionStartKey,
     lastTodayRefreshAt: cache.snapshot.generatedAt,
-    todayFingerprint: cache.preciseFingerprint,
+    todayFingerprint: 'preciseFingerprint' in cache ? cache.preciseFingerprint : cache.todayFingerprint,
     coarseSentinel: cache.coarseSentinel,
     mirrorBuiltAt: cache.snapshot.mirrorBuiltAt,
+    codexWeeklyLimit: null,
     snapshot: cache.snapshot,
     days,
   }
@@ -426,6 +444,10 @@ export class UsageDashboardService {
           return migrateLegacyCache(cache, this.timezone, todayKey, weekStartKey)
         }
 
+        if (cache.version === 3) {
+          return null
+        }
+
         return normalizeCache(cache, todayKey, weekStartKey, now.toISOString())
       })
     }
@@ -528,6 +550,7 @@ export class UsageDashboardService {
         until: todayKey,
         timezone: this.timezone,
       })
+      const codexWeeklyLimit = await extractCodexWeeklyLimit(fullFiles, now)
       const heavyLiftingWeights = await collectHeavyLiftingTokenWeights(fullFiles, this.timezone)
 
       const fileCountsByDay = new Map<string, number>()
@@ -562,7 +585,7 @@ export class UsageDashboardService {
       )
 
       const nextCache: DashboardCacheDocument = {
-        version: 3,
+        version: 4,
         timezone: this.timezone,
         weekStartKey,
         retentionStartKey,
@@ -570,6 +593,7 @@ export class UsageDashboardService {
         todayFingerprint,
         coarseSentinel,
         mirrorBuiltAt: nowIso,
+        codexWeeklyLimit,
         days,
         snapshot: buildSnapshotFromDays({
           days: Object.values(days),
@@ -578,6 +602,7 @@ export class UsageDashboardService {
           timezone: this.timezone,
           generatedAt: nowIso,
           mirrorBuiltAt: nowIso,
+          codexWeeklyLimit,
         }),
       }
 
@@ -625,6 +650,11 @@ export class UsageDashboardService {
       until: todayKey,
       timezone: this.timezone,
     })
+    const nextCodexWeeklyLimit = selectCurrentCodexWeeklyLimit(
+      await extractCodexWeeklyLimit(todayFiles, now),
+      cache.codexWeeklyLimit,
+      now,
+    )
     const heavyLiftingWeights = await collectHeavyLiftingTokenWeights(todayFiles, this.timezone)
 
     const todayEntry = todayReport.daily[0]
@@ -659,6 +689,7 @@ export class UsageDashboardService {
         todayFingerprint,
         coarseSentinel,
         mirrorBuiltAt: nowIso,
+        codexWeeklyLimit: nextCodexWeeklyLimit,
         days: {
           ...cache.days,
           [todayKey]: nextDay,
