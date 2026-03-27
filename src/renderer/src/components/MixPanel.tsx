@@ -1,17 +1,27 @@
-import type { PeriodTotals } from '@shared/usage'
+import type { ModelBreakdown, PeriodTotals } from '@shared/usage'
 
-import { formatPercent, formatTokens } from '@renderer/formatters'
+import { estimateCacheSavings } from '@renderer/cacheSavings'
+import { formatCurrency, formatPercent, formatTokens } from '@renderer/formatters'
 
 type MixPanelProps = {
+  models: ModelBreakdown[]
   period: PeriodTotals
   periodLabel: string
 }
 
-export function MixPanel({ period, periodLabel }: MixPanelProps) {
+export function MixPanel({ models, period, periodLabel }: MixPanelProps) {
   const cacheRatio = period.inputTokens === 0 ? 0 : period.cachedInputTokens / period.inputTokens
   const outputTotal = period.outputTokens + period.reasoningOutputTokens
   const outputRatio = period.totalTokens === 0 ? 0 : outputTotal / period.totalTokens
   const inputRatio = period.totalTokens === 0 ? 0 : period.inputTokens / period.totalTokens
+  const savings = estimateCacheSavings(models)
+  const showUnavailableNote = period.cachedInputTokens > 0 && !savings.hasEstimate
+
+  const estimatedSavedLabel = savings.hasEstimate
+    ? formatCurrency(savings.estimatedSavingsUSD)
+    : period.cachedInputTokens === 0
+      ? 'No savings yet'
+      : 'Unavailable'
 
   return (
     <section className="panel mix-panel">
@@ -32,14 +42,18 @@ export function MixPanel({ period, periodLabel }: MixPanelProps) {
 
       <div className="mix-summary">
         <article>
+          <span>Estimated saved</span>
+          <strong>{estimatedSavedLabel}</strong>
+        </article>
+        <article>
           <span>Saved by cache</span>
           <strong>{formatTokens(period.cachedInputTokens)}</strong>
         </article>
-        <article>
-          <span>Output</span>
-          <strong>{formatTokens(outputTotal)}</strong>
-        </article>
       </div>
+
+      {showUnavailableNote ? (
+        <p className="mix-footnote">Estimated savings are unavailable for the models in this period.</p>
+      ) : null}
 
       <dl className="mix-rows">
         <div>

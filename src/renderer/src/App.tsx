@@ -176,7 +176,9 @@ function buildSelectedWindow(
       tokenShare: model.totalTokens / denominator,
     }))
     .sort((left, right) => right.totalTokens - left.totalTokens);
-  const selectedHeavyLiftingModels: ModelBreakdown[] = [...heavyLiftingModels.entries()]
+  const selectedHeavyLiftingModels: ModelBreakdown[] = [
+    ...heavyLiftingModels.entries(),
+  ]
     .map(([name, model]) => ({
       name,
       ...model,
@@ -373,6 +375,7 @@ export function App() {
   if (!deferredSnapshot) {
     return (
       <main className="app-shell app-shell-loading">
+        <div aria-hidden="true" className="window-drag-rail" />
         <section className="loading-stage" aria-busy="true" aria-live="polite">
           <div className="loading-mark" aria-hidden="true">
             <span className="loading-mark-core" />
@@ -449,6 +452,7 @@ export function App() {
 
   return (
     <main className="app-shell">
+      <div aria-hidden="true" className="window-drag-rail" />
       <div className="app-grain" />
       <div className="orb orb-left" />
       <div className="orb orb-right" />
@@ -558,6 +562,7 @@ export function App() {
           trend={selectedView.trend}
         />
         <MixPanel
+          models={selectedView.selectedModels}
           period={selectedView.selectedPeriod}
           periodLabel={getPeriodLabel(selectedFilter)}
         />

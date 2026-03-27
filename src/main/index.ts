@@ -2,9 +2,14 @@ import { app, BrowserWindow, Tray } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { DashboardResponse } from "../shared/usage";
+
 import { registerIpc } from "./ipc";
 import { createCcusageRunner } from "./services/runCcusage";
-import { UsageDashboardService } from "./services/usageDashboardService";
+import {
+  DASHBOARD_REFRESH_INTERVAL_MS,
+  UsageDashboardService,
+} from "./services/usageDashboardService";
 import { createAppIcon, createTrayIcon } from "./trayIcon";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,6 +17,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
+let refreshTimer: NodeJS.Timeout | null = null;
+
+const DEFAULT_TRAY_TITLE = "100%";
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -47,6 +55,43 @@ function hideWindow(window: BrowserWindow) {
   }
 
   window.hide();
+}
+
+function clampPercent(value: number) {
+  if (!Number.isFinite(value)) {
+    return 100;
+  }
+
+  if (value <= 0) {
+    return 0;
+  }
+
+  if (value >= 100) {
+    return 100;
+  }
+
+  return value;
+}
+
+function getTrayTitle(response: DashboardResponse) {
+  const remainingPercent =
+    response.snapshot?.codexWeeklyLimit?.remainingPercent;
+
+  if (remainingPercent == null) {
+    return DEFAULT_TRAY_TITLE;
+  }
+
+  return `${Math.round(clampPercent(remainingPercent))}%`;
+}
+
+function updateTrayTitle(response?: DashboardResponse) {
+  if (!tray || process.platform !== "darwin") {
+    return;
+  }
+
+  tray.setTitle(response ? getTrayTitle(response) : DEFAULT_TRAY_TITLE, {
+    fontType: "monospacedDigit",
+  });
 }
 
 function createWindow() {
@@ -140,8 +185,16 @@ async function bootstrap() {
 
   registerIpc(service);
   tray = new Tray(createTrayIcon());
-  tray.setToolTip("Codex Pulse");
+  updateTrayTitle();
   tray.on("click", () => toggleMainWindow());
+
+  service.subscribe((response: DashboardResponse) => {
+    updateTrayTitle(response);
+  });
+
+  refreshTimer = setInterval(() => {
+    void service.refreshDashboard();
+  }, DASHBOARD_REFRESH_INTERVAL_MS);
 
   mainWindow = createWindow();
 
@@ -150,6 +203,11 @@ async function bootstrap() {
 
 app.on("before-quit", () => {
   isQuitting = true;
+
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
 });
 
 app.whenReady().then(bootstrap);

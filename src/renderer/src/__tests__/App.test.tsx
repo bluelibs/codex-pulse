@@ -42,6 +42,8 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: 'This week' })).toBeInTheDocument()
     expect(screen.getByText('24% left')).toBeInTheDocument()
     expect(screen.getByText('Refreshes automatically every 10 minutes.')).toBeInTheDocument()
+    expect(screen.getByText('Estimated saved')).toBeInTheDocument()
+    expect(screen.getAllByText('$6.62').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('913K').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByText('$4.56').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByText('gpt-5.4').length).toBeGreaterThan(0)
