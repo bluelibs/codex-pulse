@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.2.1] — 2026-03-27
+
+### New Features
+
+#### Per-Model Cost Breakdown
+`ModelTotals` now carries a `costUSD` field throughout the entire pipeline. The **Model Panel** displays each model's dollar cost inline next to its token-share percentage, making it easy to see which models are actually driving your bill.
+
+#### Cost Distribution for Models Without Explicit Pricing
+A new `resolveReportModelTotals()` function handles models that `ccusage` reports without a per-model cost: remaining daily cost is distributed proportionally across those models based on their token counts, so the totals always reconcile with the reported day cost.
+
+#### True macOS Accessory App Behavior
+The app now sets `LSUIElement: true` (via `extendInfo` in `electron-builder` config) and calls `app.setActivationPolicy("accessory")` at runtime — it no longer appears in the Dock or CMD+Tab switcher, behaving like a pure menu-bar utility.
+
+---
+
+### Improvements
+
+- **Window visibility state machine** — replaced ad-hoc show/hide calls with a `mainWindowPhase` state (`hidden` / `showing` / `shown` / `hiding`) and a central `syncMainWindowVisibility()` guard, eliminating race conditions when the window is toggled rapidly.
+- **Non-stealing focus on macOS** — `revealWindow` now calls `showInactive()` on Darwin so the dashboard appears without hijacking keyboard focus from the frontmost app.
+- **Multi-workspace visibility** — `configureMacWindow()` calls `setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })`, keeping the panel accessible even when a full-screen app is active.
+- **Tray title updates on load** — the tray percentage is now updated immediately after `loadDashboard()` resolves on startup instead of waiting for the next refresh cycle.
+- **Refresh button hit target** — the refresh button now gets `cursor: pointer` and `-webkit-app-region: no-drag`, making it reliably clickable inside the draggable header.
+- **Trend bar visual refresh** — simplified to a flat `#bf7a32` fill with tighter border-radius; removes the multi-stop gradient that looked muddy at small heights.
+- **Loading screen decluttered** — removed the spinner status pill from the initial loading view; error copy and cache-clear copy are shown only when relevant.
+- **`costUSD` propagated through cache & merge paths** — `mergeModelTotals`, `mergeDayModels`, `splitModelTotals`, `buildHeavyLiftingModelBreakdown`, and the legacy cache migration all accumulate and preserve per-model cost correctly.
+
+---
+
+### Tests
+
+- New unit-test suite for `resolveReportModelTotals` covering explicit cost pass-through, proportional distribution, and zero-token edge cases.
+
+---
+
 ## [0.2.0] — 2026-03-27
 
 ### Highlights
