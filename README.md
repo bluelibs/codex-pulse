@@ -2,6 +2,8 @@
 
 Codex Pulse is a small macOS Electron app that turns local Codex usage data into a tray-friendly dashboard. It reads recent session files from your Codex home, runs `@ccusage/codex` in offline mode, caches the result, and renders a compact React UI focused on today and week-to-date usage.
 
+To install it, look at the releases in this repo (in the right side) and download the latest DMG.
+
 ## What It Does
 
 - Lives in the macOS menu bar and hides the dock icon on launch
