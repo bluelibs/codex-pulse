@@ -245,6 +245,7 @@ describe('App', () => {
                 outputTokens: 11_000,
                 reasoningOutputTokens: 2_000,
                 totalTokens: 913_000,
+                costUSD: 1.23,
                 isFallback: false,
                 tokenShare: 1,
               },
@@ -257,6 +258,7 @@ describe('App', () => {
                 outputTokens: 6_000,
                 reasoningOutputTokens: 1_000,
                 totalTokens: 547_000,
+                costUSD: 0.74,
                 isFallback: false,
                 tokenShare: 547_000 / 913_000,
               },
@@ -267,6 +269,7 @@ describe('App', () => {
                 outputTokens: 5_000,
                 reasoningOutputTokens: 1_000,
                 totalTokens: 366_000,
+                costUSD: 0.49,
                 isFallback: false,
                 tokenShare: 366_000 / 913_000,
               },
@@ -285,6 +288,8 @@ describe('App', () => {
     expect(modelPanel).not.toBeNull()
     expect(within(modelPanel!).getByText('gpt-5.4-xhigh')).toBeInTheDocument()
     expect(within(modelPanel!).getByText('gpt-5.4-high')).toBeInTheDocument()
+    expect(within(modelPanel!).getByText('$0.74')).toBeInTheDocument()
+    expect(within(modelPanel!).getByText('$0.49')).toBeInTheDocument()
 
     const primaryModelCard = screen.getByText('Primary model').closest('article')
 
@@ -308,6 +313,7 @@ describe('App', () => {
                 outputTokens: 11_000,
                 reasoningOutputTokens: 2_000,
                 totalTokens: 913_000,
+                costUSD: 1.23,
                 isFallback: false,
                 tokenShare: 1,
               },
@@ -320,6 +326,7 @@ describe('App', () => {
                 outputTokens: 11_000,
                 reasoningOutputTokens: 2_000,
                 totalTokens: 913_000,
+                costUSD: 1.23,
                 isFallback: false,
                 tokenShare: 1,
               },

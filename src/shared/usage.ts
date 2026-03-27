@@ -7,7 +7,7 @@ export type TokenTotals = {
   costUSD: number
 }
 
-export type ModelTotals = Omit<TokenTotals, 'costUSD'> & {
+export type ModelTotals = TokenTotals & {
   isFallback: boolean
 }
 

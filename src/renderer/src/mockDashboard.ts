@@ -4,6 +4,7 @@ function splitHeavyLiftingModels(totalTokens: number) {
   const xhighTokens = Math.round(totalTokens * 0.52)
   const highTokens = Math.round(totalTokens * 0.28)
   const mediumTokens = totalTokens - xhighTokens - highTokens
+  const totalCostUSD = totalTokens / 760_000
 
   return [
     {
@@ -13,6 +14,7 @@ function splitHeavyLiftingModels(totalTokens: number) {
       outputTokens: 5,
       reasoningOutputTokens: 2,
       totalTokens: xhighTokens,
+      costUSD: totalCostUSD * (xhighTokens / totalTokens),
       isFallback: false,
       tokenShare: xhighTokens / totalTokens,
     },
@@ -23,6 +25,7 @@ function splitHeavyLiftingModels(totalTokens: number) {
       outputTokens: 2,
       reasoningOutputTokens: 1,
       totalTokens: highTokens,
+      costUSD: totalCostUSD * (highTokens / totalTokens),
       isFallback: false,
       tokenShare: highTokens / totalTokens,
     },
@@ -33,6 +36,7 @@ function splitHeavyLiftingModels(totalTokens: number) {
       outputTokens: 1,
       reasoningOutputTokens: 1,
       totalTokens: mediumTokens,
+      costUSD: totalCostUSD * (mediumTokens / totalTokens),
       isFallback: false,
       tokenShare: mediumTokens / totalTokens,
     },
@@ -62,6 +66,7 @@ function makeDay(date: string, totalTokens: number, costUSD: number) {
         outputTokens: 8,
         reasoningOutputTokens: 4,
         totalTokens,
+        costUSD,
         isFallback: false,
         tokenShare: 1,
       },
@@ -156,6 +161,7 @@ export const mockDashboardResponse: DashboardResponse = {
         outputTokens: 36_000,
         reasoningOutputTokens: 6_000,
         totalTokens: 2_942_000,
+        costUSD: 4.56,
         isFallback: false,
         tokenShare: 1,
       },

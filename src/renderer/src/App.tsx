@@ -167,6 +167,7 @@ function sumModels(
         outputTokens: 0,
         reasoningOutputTokens: 0,
         totalTokens: 0,
+        costUSD: 0,
         isFallback: false,
       };
 
@@ -175,6 +176,7 @@ function sumModels(
       current.outputTokens += model.outputTokens;
       current.reasoningOutputTokens += model.reasoningOutputTokens;
       current.totalTokens += model.totalTokens;
+      current.costUSD += model.costUSD;
       current.isFallback ||= model.isFallback;
       merged.set(model.name, current);
     }
@@ -458,19 +460,12 @@ export function App() {
               <span className="hero-kicker">Rebuilding usage cache</span>
             ) : null}
             <h1>Pulling your usage telemetry into focus.</h1>
-            <p className="hero-copy">
-              {response.error ??
-                (clearCachePending
-                  ? "Clearing the persisted snapshot, rescanning your recent sessions, and rebuilding the dashboard from source."
-                  : "Warming the cache, scanning recent activity, and composing your launch snapshot.")}
-            </p>
-
-            <div className="hero-ribbon">
-              <span className="status-pill status-pill-loading">
-                <span className="status-dot" aria-hidden="true" />
-                {response.isRefreshing ? "Loading now" : "Waiting for response"}
-              </span>
-            </div>
+            {response.error || clearCachePending ? (
+              <p className="hero-copy">
+                {response.error ??
+                  "Clearing the persisted snapshot, rescanning your recent sessions, and rebuilding the dashboard from source."}
+              </p>
+            ) : null}
           </div>
 
           <div

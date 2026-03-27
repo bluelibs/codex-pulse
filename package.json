@@ -47,6 +47,9 @@
     "mac": {
       "icon": "build/icon.png",
       "category": "public.app-category.developer-tools",
+      "extendInfo": {
+        "LSUIElement": true
+      },
       "target": [
         "dmg",
         "zip"

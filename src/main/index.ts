@@ -18,25 +18,44 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 let refreshTimer: NodeJS.Timeout | null = null;
+let mainWindowPhase: "hidden" | "showing" | "shown" | "hiding" = "hidden";
+let mainWindowDesiredVisible = false;
 
 const DEFAULT_TRAY_TITLE = "100%";
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
+function configureMacWindow(window: BrowserWindow) {
+  if (process.platform !== "darwin") {
+    return;
+  }
+
+  window.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+    skipTransformProcessType: true,
+  });
+  window.setHiddenInMissionControl(false);
+  window.setSkipTaskbar(true);
+}
+
 function revealWindow(window: BrowserWindow) {
+  if (window.isDestroyed()) {
+    return;
+  }
+
   if (window.isMinimized()) {
     window.restore();
   }
 
-  window.setAlwaysOnTop(true, "screen-saver");
-  window.show();
-  window.focus();
-  window.moveTop();
-
   if (process.platform === "darwin") {
-    app.focus({ steal: true });
+    window.setAlwaysOnTop(true, "screen-saver");
+    window.showInactive();
+    window.moveTop();
+    return;
   }
 
+  window.setAlwaysOnTop(true, "screen-saver");
+  window.show();
   window.focus();
   window.moveTop();
 
@@ -54,7 +73,35 @@ function hideWindow(window: BrowserWindow) {
     return;
   }
 
+  window.setAlwaysOnTop(false);
   window.hide();
+}
+
+function syncMainWindowVisibility(window: BrowserWindow) {
+  if (window.isDestroyed()) {
+    return;
+  }
+
+  if (mainWindowDesiredVisible) {
+    if (mainWindowPhase === "shown" || mainWindowPhase === "showing") {
+      return;
+    }
+
+    if (mainWindowPhase === "hiding") {
+      return;
+    }
+
+    mainWindowPhase = "showing";
+    revealWindow(window);
+    return;
+  }
+
+  if (mainWindowPhase === "hidden" || mainWindowPhase === "hiding") {
+    return;
+  }
+
+  mainWindowPhase = "hiding";
+  hideWindow(window);
 }
 
 function clampPercent(value: number) {
@@ -102,6 +149,7 @@ function createWindow() {
     minWidth: 720,
     minHeight: 700,
     show: false,
+    skipTaskbar: process.platform === "darwin",
     titleBarStyle: "hiddenInset",
     backgroundColor: "#f3ede2",
     vibrancy: "sidebar",
@@ -113,13 +161,32 @@ function createWindow() {
     },
   });
 
+  configureMacWindow(window);
+
+  window.on("show", () => {
+    mainWindowPhase = "shown";
+
+    if (!mainWindowDesiredVisible) {
+      syncMainWindowVisibility(window);
+    }
+  });
+
+  window.on("hide", () => {
+    mainWindowPhase = "hidden";
+
+    if (mainWindowDesiredVisible) {
+      syncMainWindowVisibility(window);
+    }
+  });
+
   window.webContents.on("before-input-event", (event, input) => {
     if (input.type !== "keyDown" || input.key !== "Escape") {
       return;
     }
 
     event.preventDefault();
-    hideWindow(window);
+    mainWindowDesiredVisible = false;
+    syncMainWindowVisibility(window);
   });
 
   window.on("close", (event) => {
@@ -128,11 +195,13 @@ function createWindow() {
     }
 
     event.preventDefault();
-    hideWindow(window);
+    mainWindowDesiredVisible = false;
+    syncMainWindowVisibility(window);
   });
 
   window.once("ready-to-show", () => {
-    revealWindow(window);
+    mainWindowDesiredVisible = true;
+    syncMainWindowVisibility(window);
   });
 
   if (process.env.VITE_DEV_SERVER_URL) {
@@ -149,7 +218,8 @@ function showMainWindow() {
     return;
   }
 
-  revealWindow(mainWindow);
+  mainWindowDesiredVisible = true;
+  syncMainWindowVisibility(mainWindow);
 }
 
 function toggleMainWindow() {
@@ -157,18 +227,18 @@ function toggleMainWindow() {
     return;
   }
 
-  if (mainWindow.isVisible()) {
-    hideWindow(mainWindow);
-    return;
-  }
-
-  revealWindow(mainWindow);
+  mainWindowDesiredVisible = !mainWindowDesiredVisible;
+  syncMainWindowVisibility(mainWindow);
 }
 
 async function bootstrap() {
   if (!hasSingleInstanceLock) {
     app.quit();
     return;
+  }
+
+  if (process.platform === "darwin") {
+    app.setActivationPolicy("accessory");
   }
 
   const appIcon = createAppIcon();
@@ -198,7 +268,9 @@ async function bootstrap() {
 
   mainWindow = createWindow();
 
-  void service.loadDashboard();
+  void service.loadDashboard().then((response) => {
+    updateTrayTitle(response);
+  });
 }
 
 app.on("before-quit", () => {
@@ -213,14 +285,6 @@ app.on("before-quit", () => {
 app.whenReady().then(bootstrap);
 
 app.on("second-instance", () => {
-  showMainWindow();
-});
-
-app.on("activate", () => {
-  if (!mainWindow) {
-    return;
-  }
-
   showMainWindow();
 });
 

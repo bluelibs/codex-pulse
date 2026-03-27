@@ -1,6 +1,6 @@
 import type { ModelBreakdown } from '@shared/usage'
 
-import { formatPercent, formatTokens } from '@renderer/formatters'
+import { formatCurrency, formatPercent, formatTokens } from '@renderer/formatters'
 
 type ModelPanelProps = {
   models: ModelBreakdown[]
@@ -29,6 +29,7 @@ export function ModelPanel({ models }: ModelPanelProps) {
             </div>
             <div className="model-row-share">
               {model.isFallback ? <span className="model-fallback">fallback</span> : null}
+              <span className="model-cost">{formatCurrency(model.costUSD)}</span>
               <span>{formatPercent(model.tokenShare)}</span>
             </div>
           </article>
@@ -37,4 +38,3 @@ export function ModelPanel({ models }: ModelPanelProps) {
     </section>
   )
 }
-

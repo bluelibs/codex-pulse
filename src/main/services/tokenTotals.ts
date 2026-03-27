@@ -1,6 +1,6 @@
 import type { ModelBreakdown, ModelTotals, PeriodTotals, TokenTotals, TrendPoint } from '@shared/usage'
 
-import type { CcusageDailyReport } from './runCcusage'
+import { resolveReportModelTotals, type CcusageDailyReport } from './runCcusage'
 
 export function emptyTokenTotals(): TokenTotals {
   return {
@@ -20,6 +20,7 @@ export function emptyModelTotals(): ModelTotals {
     outputTokens: 0,
     reasoningOutputTokens: 0,
     totalTokens: 0,
+    costUSD: 0,
     isFallback: false,
   }
 }
@@ -55,7 +56,7 @@ export function mergeModelTotals(report: CcusageDailyReport): ModelBreakdown[] {
   const merged = new Map<string, ModelTotals>()
 
   for (const day of report.daily) {
-    for (const [name, model] of Object.entries(day.models)) {
+    for (const [name, model] of Object.entries(resolveReportModelTotals(day.models, day.costUSD))) {
       const current = merged.get(name) ?? emptyModelTotals()
 
       current.inputTokens += model.inputTokens
@@ -63,6 +64,7 @@ export function mergeModelTotals(report: CcusageDailyReport): ModelBreakdown[] {
       current.outputTokens += model.outputTokens
       current.reasoningOutputTokens += model.reasoningOutputTokens
       current.totalTokens += model.totalTokens
+      current.costUSD += model.costUSD
       current.isFallback ||= model.isFallback
 
       merged.set(name, current)

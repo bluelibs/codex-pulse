@@ -191,6 +191,7 @@ function splitModelTotals(model: ModelTotals, effortWeights: EffortTotals) {
   const outputTokens = distributeInteger(model.outputTokens, weights)
   const reasoningOutputTokens = distributeInteger(model.reasoningOutputTokens, weights)
   const totalTokens = distributeInteger(model.totalTokens, weights)
+  const costUSD = weights.length === 0 ? [] : weights.map((weight) => model.costUSD * (weight / weights.reduce((sum, value) => sum + value, 0)))
 
   return efforts
     .map(([effort], index) => ({
@@ -201,6 +202,7 @@ function splitModelTotals(model: ModelTotals, effortWeights: EffortTotals) {
         outputTokens: outputTokens[index] ?? 0,
         reasoningOutputTokens: reasoningOutputTokens[index] ?? 0,
         totalTokens: totalTokens[index] ?? 0,
+        costUSD: costUSD[index] ?? 0,
         isFallback: model.isFallback,
       } satisfies ModelTotals,
     }))
@@ -247,6 +249,10 @@ export function buildHeavyLiftingModelBreakdown(
         totals.reasoningOutputTokens - splitTotals.reduce((sum, split) => sum + split.totals.reasoningOutputTokens, 0),
       )
       remainder.totalTokens = Math.max(0, totals.totalTokens - assignedTokens)
+      remainder.costUSD = Math.max(
+        0,
+        totals.costUSD - splitTotals.reduce((sum, split) => sum + split.totals.costUSD, 0),
+      )
       remainder.isFallback = totals.isFallback
 
       if (remainder.totalTokens > 0) {

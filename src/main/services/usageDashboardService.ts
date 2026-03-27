@@ -39,7 +39,11 @@ import {
   buildHeavyLiftingModelBreakdown,
   collectHeavyLiftingTokenWeights,
 } from "./heavyLiftingModels";
-import type { CcusageDailyReport, ReportRunner } from "./runCcusage";
+import {
+  resolveReportModelTotals,
+  type CcusageDailyReport,
+  type ReportRunner,
+} from "./runCcusage";
 import {
   emptyModelTotals,
   emptyTokenTotals,
@@ -123,6 +127,8 @@ function dayRecordFromReport(
   relevantFileCount: number,
   timezone: string,
 ): CachedDayDocument {
+  const models = resolveReportModelTotals(entry.models, entry.costUSD);
+
   return {
     dateKey,
     label: formatDayLabel(dateKey, timezone),
@@ -135,10 +141,7 @@ function dayRecordFromReport(
       costUSD: entry.costUSD,
     },
     models: Object.fromEntries(
-      Object.entries(entry.models).map(([name, totals]) => [
-        name,
-        cloneModelTotals(totals),
-      ]),
+      Object.entries(models).map(([name, totals]) => [name, cloneModelTotals(totals)]),
     ),
     heavyLiftingModels,
     relevantFileCount,
@@ -171,6 +174,7 @@ function mergeDayModels(days: CachedDayDocument[]) {
       current.outputTokens += totals.outputTokens;
       current.reasoningOutputTokens += totals.reasoningOutputTokens;
       current.totalTokens += totals.totalTokens;
+      current.costUSD += totals.costUSD;
       current.isFallback ||= totals.isFallback;
       merged.set(name, current);
     }
@@ -352,6 +356,7 @@ function migrateLegacyCache(
             outputTokens: model.outputTokens,
             reasoningOutputTokens: model.reasoningOutputTokens,
             totalTokens: model.totalTokens,
+            costUSD: model.costUSD,
             isFallback: model.isFallback,
           },
         ]),
@@ -696,7 +701,7 @@ export class UsageDashboardService {
               dateKey,
               entry,
               buildHeavyLiftingModelBreakdown(
-                entry.models,
+                resolveReportModelTotals(entry.models, entry.costUSD),
                 entry.totalTokens,
                 heavyLiftingWeights[dateKey],
               ),
@@ -798,7 +803,7 @@ export class UsageDashboardService {
             todayKey,
             todayEntry,
             buildHeavyLiftingModelBreakdown(
-              todayEntry.models,
+              resolveReportModelTotals(todayEntry.models, todayEntry.costUSD),
               todayEntry.totalTokens,
               heavyLiftingWeights[todayKey],
             ),

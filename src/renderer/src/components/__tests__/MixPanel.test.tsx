@@ -28,6 +28,7 @@ function makeModel(overrides: Partial<ModelBreakdown> = {}): ModelBreakdown {
     outputTokens: 36_000,
     reasoningOutputTokens: 6_000,
     totalTokens: 2_942_000,
+    costUSD: 4.56,
     isFallback: false,
     tokenShare: 1,
     ...overrides,

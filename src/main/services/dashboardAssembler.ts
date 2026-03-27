@@ -1,6 +1,6 @@
 import type { DashboardSnapshot } from '@shared/usage'
 
-import type { CcusageDailyReport } from './runCcusage'
+import { resolveReportModelTotals, type CcusageDailyReport } from './runCcusage'
 import { mergeModelTotals, toModelBreakdown, toPeriodTotals } from './tokenTotals'
 
 type AssembleOptions = {
@@ -26,6 +26,8 @@ export function assembleDashboardSnapshot({
   const dateGroups: DashboardSnapshot['dateGroups'] = []
 
   for (const entry of weekReport.daily) {
+    const models = resolveReportModelTotals(entry.models, entry.costUSD)
+
     trend.push({
       id: entry.date,
       label: entry.date,
@@ -48,8 +50,8 @@ export function assembleDashboardSnapshot({
         totalTokens: entry.totalTokens,
         costUSD: entry.costUSD,
       }),
-      models: toModelBreakdown(entry.models, entry.totalTokens),
-      heavyLiftingModels: toModelBreakdown(entry.models, entry.totalTokens),
+      models: toModelBreakdown(models, entry.totalTokens),
+      heavyLiftingModels: toModelBreakdown(models, entry.totalTokens),
     })
   }
 

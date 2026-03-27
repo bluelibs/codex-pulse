@@ -3,6 +3,8 @@ import path from 'node:path'
 
 import { z } from 'zod'
 
+import type { ModelTotals } from '@shared/usage'
+
 import { toCliDate } from './dateRange'
 
 const totalsSchema = z.object({
@@ -20,6 +22,7 @@ const modelSchema = z.object({
   outputTokens: z.number(),
   reasoningOutputTokens: z.number(),
   totalTokens: z.number(),
+  costUSD: z.number().optional(),
   isFallback: z.boolean(),
 })
 
@@ -34,6 +37,7 @@ const reportSchema = z.object({
 })
 
 export type CcusageDailyReport = z.infer<typeof reportSchema>
+export type CcusageReportModel = z.infer<typeof modelSchema>
 
 export type ReportRequest = {
   codexHome: string
@@ -43,6 +47,43 @@ export type ReportRequest = {
 }
 
 export type ReportRunner = (request: ReportRequest) => Promise<CcusageDailyReport>
+
+export function resolveReportModelTotals(
+  models: Record<string, CcusageReportModel>,
+  totalCostUSD: number,
+): Record<string, ModelTotals> {
+  const entries = Object.entries(models)
+  const explicitCostTotal = entries.reduce(
+    (sum, [, model]) => sum + (Number.isFinite(model.costUSD) ? model.costUSD ?? 0 : 0),
+    0,
+  )
+  const missingCostEntries = entries.filter(([, model]) => !Number.isFinite(model.costUSD))
+  const missingTokenTotal = missingCostEntries.reduce(
+    (sum, [, model]) => sum + Math.max(model.totalTokens, 0),
+    0,
+  )
+  const remainingCostUSD = Math.max(totalCostUSD - explicitCostTotal, 0)
+
+  return Object.fromEntries(
+    entries.map(([name, model]) => [
+      name,
+      {
+        inputTokens: model.inputTokens,
+        cachedInputTokens: model.cachedInputTokens,
+        outputTokens: model.outputTokens,
+        reasoningOutputTokens: model.reasoningOutputTokens,
+        totalTokens: model.totalTokens,
+        costUSD:
+          Number.isFinite(model.costUSD)
+            ? model.costUSD ?? 0
+            : missingTokenTotal > 0
+              ? remainingCostUSD * (Math.max(model.totalTokens, 0) / missingTokenTotal)
+              : 0,
+        isFallback: model.isFallback,
+      } satisfies ModelTotals,
+    ]),
+  )
+}
 
 export function createCcusageRunner(appPath: string): ReportRunner {
   const cliEntry = path.join(appPath, 'node_modules', '@ccusage', 'codex', 'dist', 'index.js')

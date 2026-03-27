@@ -20,6 +20,7 @@ const modelTotalsSchema = z.object({
   outputTokens: z.number(),
   reasoningOutputTokens: z.number(),
   totalTokens: z.number(),
+  costUSD: z.number(),
   isFallback: z.boolean(),
 }) satisfies z.ZodType<ModelTotals>
 
