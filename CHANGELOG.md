@@ -5,12 +5,15 @@
 ### New Features
 
 #### Per-Model Cost Breakdown
+
 `ModelTotals` now carries a `costUSD` field throughout the entire pipeline. The **Model Panel** displays each model's dollar cost inline next to its token-share percentage, making it easy to see which models are actually driving your bill.
 
 #### Cost Distribution for Models Without Explicit Pricing
+
 A new `resolveReportModelTotals()` function handles models that `ccusage` reports without a per-model cost: remaining daily cost is distributed proportionally across those models based on their token counts, so the totals always reconcile with the reported day cost.
 
 #### True macOS Accessory App Behavior
+
 The app now sets `LSUIElement: true` (via `extendInfo` in `electron-builder` config) and calls `app.setActivationPolicy("accessory")` at runtime — it no longer appears in the Dock or CMD+Tab switcher, behaving like a pure menu-bar utility.
 
 ---
@@ -45,13 +48,17 @@ This release focuses on making your spending picture much clearer: you can now s
 ### New Features
 
 #### Codex Weekly Limit Bar
+
 A new `CodexLimitBar` component appears at the top of the dashboard whenever a rate-limit event has been recorded. It shows used vs. remaining percentage, the exact reset timestamp, and the plan tier (pill badge). Fully accessible — implements `role="progressbar"` with all required ARIA attributes. When no rate-limit data is available yet, a gentle muted banner explains what to expect.
 
 #### Cache Savings Estimator
+
 A new `cacheSavings.ts` module computes an estimated USD saving from prompt-cache hits across the major model families (`gpt-5`, `gpt-5-mini`, `o1`, `o3`, `o4-mini`, and more). The estimate mirrors the pricing bundled with `@ccusage/codex` 18.0.10 and is surfaced directly inside the **Mix Panel**, so you can see cache efficiency alongside model breakdown at a glance.
 
 #### Smart Rhythm Aggregation
+
 The trend chart now buckles data into the right granularity per time window:
+
 - **Week** → one bar per day
 - **Month** → one bar per ISO week
 - **Year** → one bar per calendar month
@@ -59,9 +66,11 @@ The trend chart now buckles data into the right granularity per time window:
 The dedicated `rhythm.ts` module handles ISO-week alignment, UTC-safe month/year boundaries, and graceful empty-bucket filling — no more awkwardly sparse month charts.
 
 #### Toggle Window from Tray
-Clicking the tray icon now *toggles* the main window: click once to open, click again to dismiss. Previously the window would always come to front regardless of its current state.
+
+Clicking the tray icon now _toggles_ the main window: click once to open, click again to dismiss. Previously the window would always come to front regardless of its current state.
 
 #### Close Window on ESC
+
 Press `Escape` to dismiss the main window instantly — handy when you've pulled up the dashboard mid-keystroke and want to get back to work fast.
 
 ---
