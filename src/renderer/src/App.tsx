@@ -25,8 +25,15 @@ import { TrendPanel } from "./components/TrendPanel";
 import { CodexLimitBar } from "./components/CodexLimitBar";
 import { formatInteger, formatMonthDayTime, formatPercent } from "./formatters";
 import { mockDashboardResponse } from "./mockDashboard";
-
-type PeriodFilterKey = "week" | "today" | "month" | "lastMonth" | "year";
+import {
+  buildRhythmTrend,
+  endOfMonth,
+  PeriodFilterKey,
+  shiftMonthKey,
+  startOfIsoWeek,
+  startOfMonth,
+  startOfYear,
+} from "./rhythm";
 
 type PeriodFilter = {
   key: PeriodFilterKey;
@@ -40,47 +47,6 @@ const PERIOD_FILTERS: PeriodFilter[] = [
   { key: "lastMonth", label: "Last month" },
   { key: "year", label: "This year" },
 ];
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function parseDateKey(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00.000Z`);
-}
-
-function toDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function shiftDateKey(dateKey: string, dayDelta: number) {
-  return toDateKey(
-    new Date(parseDateKey(dateKey).getTime() + dayDelta * DAY_MS),
-  );
-}
-
-function shiftMonthKey(dateKey: string, monthDelta: number) {
-  const [year, month] = dateKey.split("-").map(Number);
-  return toDateKey(new Date(Date.UTC(year, month - 1 + monthDelta, 1)));
-}
-
-function startOfIsoWeek(dateKey: string) {
-  const weekday = parseDateKey(dateKey).getUTCDay();
-  const offset = weekday === 0 ? -6 : 1 - weekday;
-  return shiftDateKey(dateKey, offset);
-}
-
-function startOfMonth(dateKey: string) {
-  const [year, month] = dateKey.split("-").map(Number);
-  return toDateKey(new Date(Date.UTC(year, month - 1, 1)));
-}
-
-function startOfYear(dateKey: string) {
-  const [year] = dateKey.split("-").map(Number);
-  return toDateKey(new Date(Date.UTC(year, 0, 1)));
-}
-
-function endOfMonth(dateKey: string) {
-  return shiftDateKey(shiftMonthKey(dateKey, 1), -1);
-}
 
 function getPeriodLabel(filter: PeriodFilterKey) {
   return (
@@ -225,16 +191,7 @@ function buildSelectedWindow(
     ...totals,
   };
 
-  const trend: TrendPoint[] = selectedGroups.map((group) => ({
-    id: group.id,
-    label: group.label,
-    inputTokens: group.period.inputTokens,
-    cachedInputTokens: group.period.cachedInputTokens,
-    outputTokens: group.period.outputTokens,
-    reasoningOutputTokens: group.period.reasoningOutputTokens,
-    totalTokens: group.period.totalTokens,
-    costUSD: group.period.costUSD,
-  }));
+  const trend: TrendPoint[] = buildRhythmTrend(selectedGroups, filter);
 
   const strongestDay =
     selectedGroups.length === 0

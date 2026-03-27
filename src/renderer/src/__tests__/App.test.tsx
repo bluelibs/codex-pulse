@@ -106,6 +106,20 @@ describe('App', () => {
 
     expect(await screen.findByText('This month cache reuse')).toBeInTheDocument()
     expect(screen.getByText('Month rhythm')).toBeInTheDocument()
+    expect(screen.getByText('Mar 24-26')).toBeInTheDocument()
+  })
+
+  it('aggregates the year rhythm into month bars', async () => {
+    render(<App />)
+    const user = userEvent.setup()
+
+    await screen.findByRole('button', { name: 'This week' })
+    await user.click(screen.getByRole('button', { name: 'This year' }))
+
+    expect(await screen.findByText('Year rhythm')).toBeInTheDocument()
+    expect(screen.getByText('Jan')).toBeInTheDocument()
+    expect(screen.getByText('Feb')).toBeInTheDocument()
+    expect(screen.getByText('Mar')).toBeInTheDocument()
   })
 
   it('uses the heavy lifting split only in the model panel', async () => {
