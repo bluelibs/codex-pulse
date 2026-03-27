@@ -98,6 +98,19 @@ function showMainWindow() {
   revealWindow(mainWindow)
 }
 
+function toggleMainWindow() {
+  if (!mainWindow) {
+    return
+  }
+
+  if (mainWindow.isVisible()) {
+    hideWindow(mainWindow)
+    return
+  }
+
+  revealWindow(mainWindow)
+}
+
 async function bootstrap() {
   if (!hasSingleInstanceLock) {
     app.quit()
@@ -119,7 +132,7 @@ async function bootstrap() {
   registerIpc(service)
   tray = new Tray(createTrayIcon())
   tray.setToolTip('Codex Pulse')
-  tray.on('click', () => showMainWindow())
+  tray.on('click', () => toggleMainWindow())
 
   mainWindow = createWindow()
 
