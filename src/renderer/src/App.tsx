@@ -3,8 +3,10 @@ import {
   useDeferredValue,
   useEffect,
   useEffectEvent,
+  useId,
   useState,
 } from "react";
+import type { FocusEvent } from "react";
 
 import type {
   CodexPulseApi,
@@ -83,6 +85,46 @@ function getHeroHeadline(filter: PeriodFilterKey) {
     case "year":
       return "Today and this year, without the terminal detour.";
   }
+}
+
+function RefreshIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="refresh-button-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M20 5v5h-5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M4 19v-5h5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M6.8 9a7 7 0 0 1 11.08-2.12L20 10"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M17.2 15a7 7 0 0 1-11.08 2.12L4 14"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
 }
 
 function emptyTokenTotals(): TokenTotals {
@@ -244,6 +286,14 @@ const missingRefreshResponse: DashboardResponse = {
     "Refresh is unavailable because the Electron preload bridge is missing.",
 };
 
+const MINIMUM_REFRESH_DURATION_MS = 1000;
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 function getCodexPulseApi(): CodexPulseApi | undefined {
   return (window as Window & { codexPulse?: CodexPulseApi }).codexPulse;
 }
@@ -257,12 +307,13 @@ export function App() {
   const [manualRefreshPending, setManualRefreshPending] = useState(false);
   const [clearCachePending, setClearCachePending] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<PeriodFilterKey>("week");
+  const [refreshHelpVisible, setRefreshHelpVisible] = useState(false);
   const deferredSnapshot = useDeferredValue(response.snapshot);
+  const refreshTooltipId = useId();
 
   const applyResponse = useEffectEvent((nextResponse: DashboardResponse) => {
     startTransition(() => {
       setResponse(nextResponse);
-      setManualRefreshPending(false);
       setClearCachePending(false);
     });
   });
@@ -338,8 +389,12 @@ export function App() {
       }));
     });
 
-    const refreshed = await api.refreshDashboard();
+    const [refreshed] = await Promise.all([
+      api.refreshDashboard(),
+      delay(MINIMUM_REFRESH_DURATION_MS),
+    ]);
     applyResponse(refreshed);
+    setManualRefreshPending(false);
   }
 
   async function handleClearCacheAndReload() {
@@ -370,6 +425,22 @@ export function App() {
 
     const refreshed = await api.clearCacheAndReload();
     applyResponse(refreshed);
+  }
+
+  function showRefreshHelp() {
+    setRefreshHelpVisible(true);
+  }
+
+  function hideRefreshHelp() {
+    setRefreshHelpVisible(false);
+  }
+
+  function handleRefreshHelpBlur(event: FocusEvent<HTMLDivElement>) {
+    if (event.currentTarget.contains(event.relatedTarget)) {
+      return;
+    }
+
+    hideRefreshHelp();
   }
 
   if (!deferredSnapshot) {
@@ -448,7 +519,10 @@ export function App() {
   const selectedView = buildSelectedWindow(deferredSnapshot, selectedFilter);
   const comparisonPeriod =
     selectedFilter === "today" ? deferredSnapshot.week : deferredSnapshot.today;
-  const leadModel = selectedView.selectedModels[0];
+  const leadModel =
+    selectedView.selectedHeavyLiftingModels[0] ?? selectedView.selectedModels[0];
+  const cadenceSummary = "Refreshes automatically every 10 minutes.";
+  const cadenceDetail = `Last update: ${formatMonthDayTime(deferredSnapshot.generatedAt)}`;
 
   return (
     <main className="app-shell">
@@ -459,6 +533,10 @@ export function App() {
       <div className="orb orb-bottom" />
 
       <header className="hero">
+        <div className="hero-limit-row reveal reveal-delay-1">
+          <CodexLimitBar limit={deferredSnapshot.codexWeeklyLimit} />
+        </div>
+
         <div className="hero-topbar reveal reveal-delay-1">
           <div
             className="period-filters"
@@ -484,18 +562,41 @@ export function App() {
             ))}
           </div>
 
-          <button
-            className="refresh-button"
-            disabled={manualRefreshPending}
-            onClick={handleRefresh}
-            type="button"
+          <div
+            className="refresh-button-wrap"
+            onBlur={handleRefreshHelpBlur}
+            onFocus={showRefreshHelp}
+            onMouseEnter={showRefreshHelp}
+            onMouseLeave={hideRefreshHelp}
           >
-            Refresh
-          </button>
-        </div>
+            <button
+              aria-describedby={refreshHelpVisible ? refreshTooltipId : undefined}
+              aria-label="Refresh"
+              className={
+                manualRefreshPending
+                  ? "refresh-button refresh-button-loading"
+                  : "refresh-button"
+              }
+              disabled={manualRefreshPending}
+              onClick={handleRefresh}
+              type="button"
+            >
+              <RefreshIcon />
+            </button>
 
-        <div className="hero-limit-row reveal reveal-delay-2">
-          <CodexLimitBar limit={deferredSnapshot.codexWeeklyLimit} />
+            {refreshHelpVisible ? (
+              <div
+                className="refresh-tooltip"
+                id={refreshTooltipId}
+                role="tooltip"
+              >
+                <span className="refresh-tooltip-kicker">Live cadence</span>
+                <strong>{cadenceSummary}</strong>
+                <span>{cadenceDetail}</span>
+                <p>Click to manually refresh.</p>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="hero-copy-block reveal reveal-delay-2">
@@ -526,21 +627,12 @@ export function App() {
               </p>
             </article>
           </div>
-
-          <div className="hero-meta">
-            <span className="hero-meta-kicker">Live cadence</span>
-            <strong>Refreshes automatically every 10 minutes.</strong>
-            <span className="hero-meta-detail">
-              Last update: {formatMonthDayTime(deferredSnapshot.generatedAt)}
-            </span>
-          </div>
         </div>
 
         <div className="hero-actions reveal reveal-delay-2">
           <HeroDial
             today={deferredSnapshot.today}
             focusPeriod={selectedView.selectedPeriod}
-            leadingModel={leadModel}
             filterLabel={
               selectedFilter === "today"
                 ? "Today"

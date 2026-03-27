@@ -1,13 +1,12 @@
 import type { CSSProperties } from 'react'
 
-import type { ModelBreakdown, PeriodTotals } from '@shared/usage'
+import type { PeriodTotals } from '@shared/usage'
 
 import { formatCurrency, formatPercent, formatTokens } from '@renderer/formatters'
 
 type HeroDialProps = {
   today: PeriodTotals
   focusPeriod: PeriodTotals
-  leadingModel?: ModelBreakdown
   filterLabel: string
 }
 
@@ -25,11 +24,10 @@ function clampDialShare(value: number) {
   return value
 }
 
-export function HeroDial({ today, focusPeriod, leadingModel, filterLabel }: HeroDialProps) {
+export function HeroDial({ today, focusPeriod, filterLabel }: HeroDialProps) {
   const todayShare = focusPeriod.totalTokens === 0 ? 0 : today.totalTokens / focusPeriod.totalTokens
   const cacheShare = today.inputTokens === 0 ? 0 : today.cachedInputTokens / today.inputTokens
   const dialStyle = {
-    '--signal-angle': `${clampDialShare(todayShare) * FULL_CIRCLE_DEGREES}deg`,
     '--cache-angle': `${clampDialShare(cacheShare) * FULL_CIRCLE_DEGREES}deg`,
   } as CSSProperties
   const heading =
@@ -40,10 +38,7 @@ export function HeroDial({ today, focusPeriod, leadingModel, filterLabel }: Hero
   return (
     <aside className="signal-card" style={dialStyle}>
       <div className="signal-card-header">
-        <div>
-          <h2>{heading}</h2>
-        </div>
-        <span className="signal-model-badge">{leadingModel?.name ?? 'Awaiting model'}</span>
+        <h2>{heading}</h2>
       </div>
 
       <div className="signal-dial">
@@ -55,10 +50,6 @@ export function HeroDial({ today, focusPeriod, leadingModel, filterLabel }: Hero
       </div>
 
       <div className="signal-dial-key" aria-label="Dial legend">
-        <span className="signal-dial-key-item">
-          <span className="signal-swatch signal-swatch-primary" aria-hidden="true" />
-          Today share
-        </span>
         <span className="signal-dial-key-item">
           <span className="signal-swatch signal-swatch-secondary" aria-hidden="true" />
           Today cache reuse

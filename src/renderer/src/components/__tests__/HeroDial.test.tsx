@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import type { ModelBreakdown, PeriodTotals } from '@shared/usage'
+import type { PeriodTotals } from '@shared/usage'
 
 import { HeroDial } from '../HeroDial'
 
@@ -20,27 +20,12 @@ function makePeriodTotals(overrides: Partial<PeriodTotals> = {}): PeriodTotals {
   }
 }
 
-function makeModel(overrides: Partial<ModelBreakdown> = {}): ModelBreakdown {
-  return {
-    name: 'gpt-5.4',
-    inputTokens: 0,
-    cachedInputTokens: 0,
-    outputTokens: 0,
-    reasoningOutputTokens: 0,
-    totalTokens: 0,
-    isFallback: false,
-    tokenShare: 0,
-    ...overrides,
-  }
-}
-
 describe('HeroDial', () => {
   it('renders empty usage as unloaded rings', () => {
     render(
       <HeroDial
         today={makePeriodTotals()}
         focusPeriod={makePeriodTotals({ label: 'This week', costUSD: 4.56 })}
-        leadingModel={makeModel()}
         filterLabel="This week"
       />,
     )
@@ -49,9 +34,14 @@ describe('HeroDial', () => {
 
     expect(card).not.toBeNull()
     expect(card).toHaveStyle({
-      '--signal-angle': '0deg',
       '--cache-angle': '0deg',
     })
+    expect(card?.getAttribute('style')).not.toContain('--signal-angle')
+    const legend = screen.getByLabelText('Dial legend')
+
+    expect(within(legend).queryByText('Today share')).not.toBeInTheDocument()
+    expect(within(legend).getByText('Today cache reuse')).toBeInTheDocument()
+    expect(screen.getByText('Today share')).toBeInTheDocument()
     expect(screen.getByText('0% of this week')).toBeInTheDocument()
     expect(screen.getByText('$4.56')).toBeInTheDocument()
   })
@@ -76,7 +66,6 @@ describe('HeroDial', () => {
           totalTokens: 1_000,
           costUSD: 8.9,
         })}
-        leadingModel={makeModel({ tokenShare: 0.64 })}
         filterLabel="Last month"
       />,
     )
@@ -85,9 +74,9 @@ describe('HeroDial', () => {
 
     expect(card).not.toBeNull()
     expect(card).toHaveStyle({
-      '--signal-angle': '360deg',
       '--cache-angle': '360deg',
     })
+    expect(card?.getAttribute('style')).not.toContain('--signal-angle')
     expect(screen.getByText('120% of last month')).toBeInTheDocument()
     expect(screen.getByText('$8.90')).toBeInTheDocument()
   })
